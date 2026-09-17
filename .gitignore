@@ -36,6 +36,10 @@
 
 # Visual Studio cache directory
 .vs/
+.idea/
+
+.cursor/
+.vsconfig
 
 # Gradle cache directory
 .gradle/
@@ -98,7 +102,7 @@ InitTestScene*.unity*
 /[Aa]ssets/Unity.VisualScripting.Generated/VisualScripting.Flow/UnitOptions.db.meta
 /[Aa]ssets/Unity.VisualScripting.Generated/VisualScripting.Core/Property Providers
 /[Aa]ssets/Unity.VisualScripting.Generated/VisualScripting.Core/Property Providers.meta
-
+/[Aa]ssets/Plugins/ParrelSync/ScriptableObjects/*
 # Auto-generated scenes by play mode tests
 /[Aa]ssets/[Ii]nit[Tt]est[Ss]cene*.unity*
 
