@@ -133,6 +133,7 @@ GameObject:
   - component: {fileID: 14155416}
   - component: {fileID: 14155415}
   - component: {fileID: 14155420}
+  - component: {fileID: 14155421}
   m_Layer: 0
   m_Name: r
   m_TagString: Untagged
@@ -273,9 +274,36 @@ Rigidbody:
   m_ImplicitTensor: 1
   m_UseGravity: 1
   m_IsKinematic: 0
-  m_Interpolate: 0
+  m_Interpolate: 1
   m_Constraints: 0
   m_CollisionDetection: 0
+--- !u!114 &14155421
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 14155414}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 69877e2b14e4106459970bce1f9734ab, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WheelSystem.PlatformRider
+  groundNormalThreshold: 0.4
+  riseCancelThreshold: 3
+  stickAcceleration: 0
+  stickDuration: 0.15
+  stickTriggerSpeed: 0.05
+  alignToGroundNormal: 1
+  alignTorque: 30
+  alignDamping: 6
+  ridingAngularDamping: 2
+  body: {fileID: 0}
+  contactGrounded: 0
+  contactNormal: {x: 0, y: 1, z: 0}
+  stickTimer: 0
+  <IsGrounded>k__BackingField: 0
+  <GroundNormal>k__BackingField: {x: 0, y: 1, z: 0}
 --- !u!1 &63053284
 GameObject:
   m_ObjectHideFlags: 0
@@ -573,6 +601,7 @@ GameObject:
   - component: {fileID: 308394547}
   - component: {fileID: 308394545}
   - component: {fileID: 308394551}
+  - component: {fileID: 308394552}
   m_Layer: 0
   m_Name: w
   m_TagString: Untagged
@@ -624,7 +653,7 @@ BoxCollider:
   m_LayerOverridePriority: 0
   m_IsTrigger: 0
   m_ProvidesContacts: 0
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
@@ -723,10 +752,38 @@ MonoBehaviour:
   slamSpeed: 18
   slamLockout: 0.12
   slamTimeout: 3
+  jumpCooldown: 0.2
   groundNormalThreshold: 0.4
   coyoteTime: 0.12
+  alignToGroundNormal: 1
+  alignSpeed: 14
+  groundStickThreshold: 4
+  groundStickForce: 0
   cameraTransform: {fileID: 0}
   showDebugHud: 1
+--- !u!136 &308394552
+CapsuleCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 308394544}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 2
+  m_Radius: 0.5
+  m_Height: 1
+  m_Direction: 1
+  m_Center: {x: 0, y: 0, z: 0}
 --- !u!1 &838324972
 GameObject:
   m_ObjectHideFlags: 0
@@ -738,13 +795,12 @@ GameObject:
   - component: {fileID: 838324982}
   - component: {fileID: 838324981}
   - component: {fileID: 838324980}
+  - component: {fileID: 838324984}
   - component: {fileID: 838324979}
   - component: {fileID: 838324978}
   - component: {fileID: 838324977}
-  - component: {fileID: 838324976}
-  - component: {fileID: 838324975}
-  - component: {fileID: 838324974}
   - component: {fileID: 838324973}
+  - component: {fileID: 838324983}
   m_Layer: 0
   m_Name: Cube
   m_TagString: Untagged
@@ -764,62 +820,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e2ed1af4f779025458c34f9fda347873, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WheelSystem.WheelDebugView
-  solver: {fileID: 838324975}
-  platform: {fileID: 838324974}
+  solver: {fileID: 0}
+  platform: {fileID: 0}
   sphere: {fileID: 0}
   config: {fileID: 0}
   drawOffsetRadius: 1
   drawOccupants: 1
   markerSize: 0.25
---- !u!114 &838324974
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 838324972}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1d55e653736843943897466344337ce6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::WheelSystem.PlatformTilt
-  sphere: {fileID: 873534283}
-  config: {fileID: 11400000, guid: 17533242d1df57043b3d5a5aab3593c7, type: 2}
-  deriveHeightFromSphere: 1
-  radiusMultiplier: 1
-  extraOffset: 0
-  manualHeight: 0
---- !u!114 &838324975
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 838324972}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0b1cc6825af69c447b6fd3f848c7ce97, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::WheelSystem.CenterOfMassSolver
-  pivot: {fileID: 873534283}
-  smoothTime: 0.08
-  externalBias: {x: 0, y: 0, z: 0}
---- !u!114 &838324976
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 838324972}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1470bdf63850eb445af5972584bcec1b, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::WheelSystem.PlatformOccupancySensor
-  detectionMask:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  exitGracePeriod: 0.25
 --- !u!54 &838324977
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -961,6 +968,43 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &838324983
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 838324972}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0b1cc6825af69c447b6fd3f848c7ce97, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WheelSystem.CenterOfMassSolver
+  pivot: {fileID: 873534283}
+  detectionMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  exitGracePeriod: 0.25
+  externalBias: {x: 0, y: 0, z: 0}
+  smoothTime: 0.08
+--- !u!114 &838324984
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 838324972}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1d55e653736843943897466344337ce6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WheelSystem.PlatformTilt
+  sphere: {fileID: 873534283}
+  config: {fileID: 11400000, guid: 17533242d1df57043b3d5a5aab3593c7, type: 2}
+  deriveHeightFromSphere: 1
+  radiusMultiplier: 1
+  extraOffset: 0
+  manualHeight: 0
 --- !u!1 &873534282
 GameObject:
   m_ObjectHideFlags: 0
@@ -1009,7 +1053,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6b27dda4187b2d844a32e82ac56dd231, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WheelSystem.SphereDriver
-  platform: {fileID: 838324974}
+  platform: {fileID: 838324984}
   config: {fileID: 11400000, guid: 17533242d1df57043b3d5a5aab3593c7, type: 2}
   groundMask:
     serializedVersion: 2
@@ -1134,6 +1178,7 @@ GameObject:
   - component: {fileID: 941872278}
   - component: {fileID: 941872277}
   - component: {fileID: 941872276}
+  - component: {fileID: 941872282}
   m_Layer: 0
   m_Name: r (1)
   m_TagString: Untagged
@@ -1165,7 +1210,7 @@ Rigidbody:
   m_ImplicitTensor: 1
   m_UseGravity: 1
   m_IsKinematic: 0
-  m_Interpolate: 0
+  m_Interpolate: 1
   m_Constraints: 0
   m_CollisionDetection: 0
 --- !u!114 &941872277
@@ -1277,6 +1322,33 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &941872282
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 941872275}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 69877e2b14e4106459970bce1f9734ab, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WheelSystem.PlatformRider
+  groundNormalThreshold: 0.4
+  riseCancelThreshold: 3
+  stickAcceleration: 0
+  stickDuration: 0.15
+  stickTriggerSpeed: 0.05
+  alignToGroundNormal: 1
+  alignTorque: 30
+  alignDamping: 6
+  ridingAngularDamping: 2
+  body: {fileID: 0}
+  contactGrounded: 0
+  contactNormal: {x: 0, y: 1, z: 0}
+  stickTimer: 0
+  <IsGrounded>k__BackingField: 0
+  <GroundNormal>k__BackingField: {x: 0, y: 1, z: 0}
 --- !u!1 &2097529742
 GameObject:
   m_ObjectHideFlags: 0
