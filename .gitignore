@@ -40,7 +40,9 @@
 
 .cursor/
 .vsconfig
+.ai/
 
+AGENTS.md
 # Gradle cache directory
 .gradle/
 
