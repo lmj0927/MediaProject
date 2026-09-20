@@ -3,8 +3,8 @@ using UnityEngine;
 namespace WheelSystem
 {
     /// <summary>
-    /// 판의 기울기를 읽어 구체에 보정 토크를 넣는다.
-    /// 구체는 non-kinematic Rigidbody여야 충돌, 경사, 넉백이 물리로 처리된다.
+    /// 판의 기울기를 읽어 구체에 보정 토크를 넣음.
+    /// 구체는 non-kinematic Rigidbody여야 충돌, 경사, 넉백이 물리로 처리됨.
     /// </summary>
     [RequireComponent(typeof(Rigidbody))]
     public class SphereDriver : MonoBehaviour
@@ -22,7 +22,7 @@ namespace WheelSystem
 
         public bool IsGrounded { get; private set; }
 
-        /// <summary>현재 수평 속도 크기. UI나 카메라 연출에 쓴다.</summary>
+        /// <summary>현재 수평 속도 크기. UI나 카메라 연출에 사용함.</summary>
         public float HorizontalSpeed
         {
             get

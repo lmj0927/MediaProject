@@ -3,8 +3,8 @@ using UnityEngine;
 namespace WheelSystem
 {
     /// <summary>
-    /// 무게중심 오프셋을 판의 기울기로 바꾸고, 동시에 구체 위치를 따라간다.
-    /// 판은 Kinematic Rigidbody여야 한다. 부모-자식 관계는 쓰지 않는다.
+    /// 무게중심 오프셋을 판의 기울기로 바꾸고, 동시에 구체 위치를 따라감.
+    /// 판은 Kinematic Rigidbody여야 함.
     /// </summary>
     [RequireComponent(typeof(Rigidbody))]
     [RequireComponent(typeof(CenterOfMassSolver))]
@@ -15,10 +15,10 @@ namespace WheelSystem
         [SerializeField] private WheelConfig config;
 
         [Header("Placement")]
-        [Tooltip("구체의 실제 반지름에서 높이를 자동 계산한다. 끄면 manualHeight를 그대로 쓴다.")]
+        [Tooltip("구체의 실제 반지름에서 높이를 자동 계산함. 끄면 manualHeight를 그대로 사용함.")]
         [SerializeField] private bool deriveHeightFromSphere = true;
 
-        [Tooltip("구체 반지름의 배수. 1 = 구체 꼭대기에 판이 얹힌다. 0.5 = 절반쯤 파묻힌다. 0 = 구체 중심.")]
+        [Tooltip("구체 반지름의 배수. 1 = 구체 위. 0 = 구체 중심.")]
         [Range(-1.5f, 2f)][SerializeField] private float radiusMultiplier = 1f;
 
         [Tooltip("자동 계산값에 추가로 더하는 보정값.")]
@@ -68,10 +68,10 @@ namespace WheelSystem
             return sphere.lossyScale.y * 0.5f;
         }
 
-        /// <summary>런타임에 구체 크기가 바뀌면 호출해 캐시를 비운다.</summary>
+        /// <summary>런타임에 구체 크기가 바뀌면 호출해 캐시를 비움.</summary>
         public void InvalidateSphereRadius() => cachedSphereRadius = -1f;
 
-        /// <summary>판의 현재 법선. SphereDriver가 읽어간다.</summary>
+        /// <summary>판의 현재 법선.</summary>
         public Vector3 SurfaceNormal => currentTilt * Vector3.up;
 
         /// <summary>수평면 기준 기울기 각도(도).</summary>
@@ -108,7 +108,7 @@ namespace WheelSystem
 
             if (sphere == null)
             {
-                Debug.LogError($"{name}: sphere 참조가 비어 있습니다. 위치 추종을 중단합니다.", this);
+                Debug.LogError($"{name}: sphere 참조가 비어 있습니다. 위치 동기화를 중단합니다.", this);
             }
             else
             {
@@ -119,8 +119,7 @@ namespace WheelSystem
         }
 
         /// <summary>
-        /// 판의 솔리드 콜라이더가 구체를 밀어내지 않도록 충돌을 끈다.
-        /// 이게 없으면 겹쳐 있는 두 콜라이더가 서로를 밀어 휠 전체가 떠오른다.
+        /// 판의 솔리드 콜라이더가 구체를 밀어내지 않도록 충돌을 비활성화.
         /// </summary>
         private void IgnoreSphereCollisions()
         {
@@ -149,8 +148,7 @@ namespace WheelSystem
             currentTilt = Quaternion.Slerp(currentTilt, target, t);
             body.MoveRotation(currentTilt);
 
-            // sphere가 없으면 위치를 건드리지 않는다.
-            // 자기 위치를 기준으로 오프셋을 더하면 매 프레임 누적되어 무한히 떠오른다.
+            // sphere가 없으면 위치를 건드리지 않음.
             if (sphere == null) return;
 
             body.MovePosition(sphere.position + Vector3.up * HeightOffset);
@@ -170,9 +168,8 @@ namespace WheelSystem
             Vector3 direction = offset.normalized;
             float angle = magnitude * config.maxTiltAngle;
 
-            // 무게가 쏠린 쪽이 내려가도록 축을 잡는다.
-            // Unity의 AngleAxis는 왼손 법칙이므로 Cross(up, direction) 순서여야 한다.
-            // 순서를 뒤집으면 무게 쏠린 쪽이 올라가고, 결과적으로 이동 방향까지 반대가 된다.
+            // 무게가 쏠린 쪽이 내려가도록 축을 잡음.
+            // Unity의 AngleAxis는 왼손 법칙이므로 Cross(up, direction) 순서
             Vector3 axis = Vector3.Cross(Vector3.up, direction);
             if (axis.sqrMagnitude < 1e-6f) return Quaternion.identity;
 
@@ -190,7 +187,7 @@ namespace WheelSystem
 
             cachedSphereRadius = -1f;
 
-            // 에디터에서 값을 만지면 즉시 배치가 반영되게 한다
+            // 에디터에서 값 수정시 즉각 반영.
             if (!Application.isPlaying && sphere != null)
             {
                 transform.position = sphere.position + Vector3.up * HeightOffset;

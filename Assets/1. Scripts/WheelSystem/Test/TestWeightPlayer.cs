@@ -7,10 +7,8 @@ using UnityEngine.InputSystem;
 namespace WheelSystem
 {
     /// <summary>
-    /// 휠 감도 테스트용 플레이어. 팀원의 본 컨트롤러가 나오면 버리는 임시 스크립트다.
+    /// 휠 감도 테스트용 플레이어.
     /// WASD 이동, Space 점프, 공중에서 Space 한 번 더 누르면 내리찍기.
-    /// 바닥 감지는 충돌 접점으로 한다. 레이캐스트는 자기 콜라이더를 때리거나
-    /// 기울어진 판 위에서 헛돌기 쉬워서 쓰지 않는다.
     /// </summary>
     [RequireComponent(typeof(Rigidbody))]
     public class TestWeightPlayer : MonoBehaviour, IWeightSource
@@ -32,19 +30,37 @@ namespace WheelSystem
         [Header("Jump")]
         [SerializeField] private float jumpSpeed = 6f;
         [SerializeField] private float slamSpeed = 18f;
-        [Tooltip("점프 직후 이 시간 안에는 내리찍기를 쓸 수 없다.")]
+        [Tooltip("점프 직후 이 시간 안에는 내리찍기를 쓸 수 없음.")]
         [SerializeField] private float slamLockout = 0.12f;
-        [Tooltip("내리찍기가 이 시간 안에 착지하지 못하면 강제로 해제한다. 무한 잠김 방지용.")]
+        [Tooltip("내리찍기가 이 시간 안에 착지하지 못하면 강제로 해제함(무한 잠김 방지).")]
         [SerializeField] private float slamTimeout = 3f;
 
+        [Tooltip("점프 후 다시 점프할 수 있게 되기까지의 시간.")]
+        [SerializeField] private float jumpCooldown = 0.2f;
+
         [Header("Ground check")]
-        [Tooltip("접촉면의 법선 Y가 이 값보다 크면 바닥으로 친다. 0.5면 약 60도까지 허용.")]
+        [Tooltip("접촉면의 법선 Y가 이 값보다 크면 바닥으로 간주. 0.5면 약 60도까지 허용.")]
         [Range(0f, 1f)][SerializeField] private float groundNormalThreshold = 0.4f;
         [Tooltip("바닥에서 떨어진 뒤에도 잠시 착지 상태로 취급하는 시간.")]
         [SerializeField] private float coyoteTime = 0.12f;
 
+        [Header("Ground alignment")]
+        [Tooltip("접촉면의 기울기에 맞춰 몸을 세울지 여부.")]
+        [SerializeField] private bool alignToGroundNormal = true;
+        [Tooltip("정렬이 따라붙는 속도. 높을수록 즉각적.")]
+        [SerializeField] private float alignSpeed = 14f;
+
+        [Tooltip("착지 상태에서 이 속도 이하로 떠오르는 것은 무시함. " +
+                 "판이 회전하며 밀어 올리는 힘을 걸러냄. 0이면 흡착 없음.")]
+        [SerializeField] private float groundStickThreshold = 4f;
+
+        [Tooltip("착지 상태에서 바닥으로 눌러 주는 가속도. 접촉이 끊기는 것을 막음.\n" +
+                 "주의: 이 값은 수직항력을 키워 마찰을 함께 늘리므로 크게 잡으면 완만한 기울기에서 아무것도 미끄러지지 않음.")]
+        [SerializeField] private float groundStickForce = 4f;
+
+
         [Header("Camera")]
-        [Tooltip("이동 방향의 기준. 비우면 메인 카메라를 쓴다.")]
+        [Tooltip("이동 방향의 기준. 비우면 메인 카메라를 사용함.")]
         [SerializeField] private Transform cameraTransform;
 
         [Header("Debug")]
@@ -59,15 +75,21 @@ namespace WheelSystem
         private float weightMultiplier = 1f;
         private float slamTimer;
         private float lastGroundedTime = -99f;
+        private float jumpCooldownTimer;
 
         // 충돌 접점에서 모은 바닥 정보
         private bool contactGrounded;
         private Transform contactGround;
+        private Vector3 contactNormal = Vector3.up;
+        private Vector3 groundNormal = Vector3.up;
 
         // 움직이는 발판 위에서 같이 실려 가기 위한 추정값
         private Transform groundTransform;
         private Vector3 lastGroundPosition;
-        private Vector3 groundVelocity;
+        private Quaternion lastGroundRotation = Quaternion.identity;
+        private Vector3 groundVelocity;         // 판 원점의 선속도
+        private Vector3 groundAngularVelocity;  // 판의 각속도 (rad/s)
+        private Vector3 groundPointVelocity;    // 플레이어 발밑 지점의 실제 속도
 
         private Vector2 debugInput;
 
@@ -96,7 +118,9 @@ namespace WheelSystem
         {
             if (!JumpPressedThisFrame()) return;
 
-            if (IsGrounded || HasCoyote) jumpQueued = true;
+            bool canJump = (IsGrounded || HasCoyote) && jumpCooldownTimer <= 0f;
+
+            if (canJump) jumpQueued = true;
             else if (!isSlamming && airborneTime > slamLockout) slamQueued = true;
         }
 
@@ -106,9 +130,12 @@ namespace WheelSystem
 
             bool wasGrounded = IsGrounded;
 
-            // 충돌 콜백은 FixedUpdate 이후에 오므로, 직전 스텝의 결과를 여기서 소비한다
-            IsGrounded = contactGrounded;
+            if (jumpCooldownTimer > 0f) jumpCooldownTimer -= dt;
+
+            // 쿨다운 중에는 접촉이 남아 있어도 착지로 치지 않음.
+            IsGrounded = contactGrounded && jumpCooldownTimer <= 0f;
             Transform ground = contactGround;
+            if (contactGrounded) groundNormal = contactNormal;
             contactGrounded = false;
             contactGround = null;
 
@@ -123,6 +150,8 @@ namespace WheelSystem
                 airborneTime += dt;
                 groundTransform = null;
                 groundVelocity = Vector3.Lerp(groundVelocity, Vector3.zero, dt * 5f);
+                groundAngularVelocity = Vector3.zero;
+                groundPointVelocity = Vector3.Lerp(groundPointVelocity, Vector3.zero, dt * 5f);
             }
 
             UpdateSlamState(wasGrounded, dt);
@@ -130,6 +159,8 @@ namespace WheelSystem
             HandleJump();
             HandleSlam();
             HandleMovement(dt);
+            ApplyGroundStick();
+            HandleGroundAlignment(dt);
             UpdateWeight(dt);
         }
 
@@ -139,8 +170,7 @@ namespace WheelSystem
 
             slamElapsed += dt;
 
-            // 착지했거나, 너무 오래 끌면 해제한다.
-            // 타임아웃이 없으면 바닥 감지가 어긋났을 때 조작이 영구히 잠긴다.
+            // 착지했거나, 너무 오래 끌면 해제함.
             if (IsGrounded || slamElapsed > slamTimeout)
             {
                 isSlamming = false;
@@ -150,14 +180,15 @@ namespace WheelSystem
         }
 
         /// <summary>
-        /// 발 밑 발판의 이동 속도를 추정한다.
-        /// 판은 Kinematic이라 Rigidbody.linearVelocity를 믿을 수 없어서 직접 잰다.
+        /// 발 밑 발판의 이동 속도를 추정함.
         /// </summary>
         private void TrackGroundVelocity(Transform ground, float dt)
         {
             if (ground == null)
             {
                 groundVelocity = Vector3.zero;
+                groundAngularVelocity = Vector3.zero;
+                groundPointVelocity = Vector3.zero;
                 return;
             }
 
@@ -165,13 +196,33 @@ namespace WheelSystem
             {
                 groundTransform = ground;
                 lastGroundPosition = ground.position;
+                lastGroundRotation = ground.rotation;
                 groundVelocity = Vector3.zero;
+                groundAngularVelocity = Vector3.zero;
+                groundPointVelocity = Vector3.zero;
                 return;
             }
 
-            Vector3 delta = ground.position - lastGroundPosition;
+            if (dt <= 0f) return;
+
+            // 선속도
+            groundVelocity = (ground.position - lastGroundPosition) / dt;
             lastGroundPosition = ground.position;
-            groundVelocity = dt > 0f ? delta / dt : Vector3.zero;
+
+            // 각속도: 회전 변화량을 축-각으로 풀어서 rad/s로 환산
+            Quaternion deltaRot = ground.rotation * Quaternion.Inverse(lastGroundRotation);
+            lastGroundRotation = ground.rotation;
+
+            deltaRot.ToAngleAxis(out float angleDeg, out Vector3 axis);
+            if (angleDeg > 180f) angleDeg -= 360f;   // 최단 경로로 보정
+
+            groundAngularVelocity = float.IsNaN(axis.x) || Mathf.Abs(angleDeg) < 0.0001f
+                ? Vector3.zero
+                : axis.normalized * (angleDeg * Mathf.Deg2Rad / dt);
+
+            // 판이 회전하면 중심에서 멀수록 표면이 빠르게 움직임.
+            Vector3 lever = transform.position - ground.position;
+            groundPointVelocity = groundVelocity + Vector3.Cross(groundAngularVelocity, lever);
         }
 
         private void HandleJump()
@@ -180,11 +231,12 @@ namespace WheelSystem
             jumpQueued = false;
 
             Vector3 v = body.linearVelocity;
-            v.y = jumpSpeed + Mathf.Max(0f, groundVelocity.y);
+            v.y = jumpSpeed + Mathf.Max(0f, groundPointVelocity.y);
             body.linearVelocity = v;
 
             IsGrounded = false;
             lastGroundedTime = -99f;
+            jumpCooldownTimer = jumpCooldown;
         }
 
         private void HandleSlam()
@@ -205,18 +257,63 @@ namespace WheelSystem
             Vector2 input = ReadMoveInput();
             debugInput = input;
 
-            // 내리찍는 중에는 수평 조작만 잠근다
+            // 내리찍는 중에는 수평 조작을 잠금.
             if (isSlamming) return;
 
             Vector3 wish = ToWorldDirection(input) * (moveSpeed * Mathf.Clamp01(input.magnitude));
 
-            // 발판 속도를 기준으로 삼아야 움직이는 판 위에서 제자리를 유지할 수 있다
-            Vector3 target = new Vector3(groundVelocity.x + wish.x, 0f, groundVelocity.z + wish.z);
+            // 움직이고 회전하는 판 위에서 제자리를 유지.
+            Vector3 carry = IsGrounded ? groundPointVelocity : groundVelocity;
+            Vector3 target = new Vector3(carry.x + wish.x, 0f, carry.z + wish.z);
             Vector3 current = new Vector3(body.linearVelocity.x, 0f, body.linearVelocity.z);
             Vector3 diff = target - current;
 
             float accel = IsGrounded ? acceleration : airAcceleration;
             body.AddForce(Vector3.ClampMagnitude(diff / dt, accel), ForceMode.Acceleration);
+
+        }
+
+        /// <summary>
+        /// 판이 회전하며 밀어 올리는 속도를 걸러 내고, 바닥으로 살짝 눌러 접촉을 유지함.
+        /// 점프와 내리찍기에는 적용하지 않음.
+        /// </summary>
+        private void ApplyGroundStick()
+        {
+            if (!IsGrounded || isSlamming || jumpQueued) return;
+            if (jumpCooldownTimer > 0f) return;
+
+            if (groundStickThreshold > 0f)
+            {
+                // 판이 회전하며 밀어 올린 성분만 제거.
+                float rise = body.linearVelocity.y - groundPointVelocity.y;
+                if (rise > 0f && rise < groundStickThreshold)
+                {
+                    Vector3 v = body.linearVelocity;
+                    v.y = groundPointVelocity.y;
+                    body.linearVelocity = v;
+                }
+            }
+
+            if (groundStickForce > 0f)
+            {
+                body.AddForce(Vector3.down * groundStickForce, ForceMode.Acceleration);
+            }
+        }
+
+        /// <summary>
+        /// 몸을 접촉면 법선에 맞춰 세움.
+        /// </summary>
+        private void HandleGroundAlignment(float dt)
+        {
+            if (!alignToGroundNormal) return;
+
+            // 공중에서는 서서히 수직으로 되돌림.
+            Vector3 targetUp = IsGrounded ? groundNormal : Vector3.up;
+
+            Quaternion target = Quaternion.FromToRotation(transform.up, targetUp) * transform.rotation;
+            float t = 1f - Mathf.Exp(-alignSpeed * dt);
+
+            body.MoveRotation(Quaternion.Slerp(transform.rotation, target, t));
         }
 
         private void UpdateWeight(float dt)
@@ -240,7 +337,7 @@ namespace WheelSystem
 
             if (target > weightMultiplier)
             {
-                weightMultiplier = target;   // 즉시 무거워진다
+                weightMultiplier = target;   // 즉각 가중.
             }
             else if (slamRecoverTime > 0f)
             {
@@ -278,14 +375,18 @@ namespace WheelSystem
         private void EvaluateContacts(Collision collision)
         {
             int count = collision.contactCount;
+            float best = groundNormalThreshold;
+
             for (int i = 0; i < count; i++)
             {
-                if (collision.GetContact(i).normal.y > groundNormalThreshold)
-                {
-                    contactGrounded = true;
-                    contactGround = collision.transform;
-                    return;
-                }
+                Vector3 n = collision.GetContact(i).normal;
+                if (n.y <= best) continue;
+
+                // 가장 평평한 접촉면을 바닥으로 간주.
+                best = n.y;
+                contactGrounded = true;
+                contactGround = collision.transform;
+                contactNormal = n;
             }
         }
 
@@ -327,7 +428,7 @@ namespace WheelSystem
         {
             if (!showDebugHud || !Application.isPlaying) return;
 
-            var rect = new Rect(Screen.width - 250, 10, 240, 116);
+            var rect = new Rect(Screen.width - 250, 10, 240, 152);
             GUI.Box(rect, "");
             GUILayout.BeginArea(new Rect(rect.x + 8, rect.y + 6, rect.width - 16, rect.height - 12));
             GUILayout.Label($"input      : {debugInput}");
@@ -336,6 +437,8 @@ namespace WheelSystem
             GUILayout.Label($"weight x   : {weightMultiplier:F2}");
             GUILayout.Label($"velocity   : {body.linearVelocity.magnitude:F2}");
             GUILayout.Label($"groundVel  : {groundVelocity.magnitude:F2}");
+            GUILayout.Label($"pointVel.y : {groundPointVelocity.y:F2}");
+            GUILayout.Label($"groundSpin : {groundAngularVelocity.magnitude:F2}");
             GUILayout.EndArea();
         }
 #endif

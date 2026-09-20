@@ -3,8 +3,8 @@ using UnityEngine;
 namespace WheelSystem
 {
     /// <summary>
-    /// 무게중심, 기울기, 이동 방향을 씬 뷰에 그린다.
-    /// 판에 붙이고, 문제가 생기면 여기를 먼저 본다.
+    /// 무게중심, 기울기, 이동 방향을 씬 뷰에 시각화.
+    /// 판에 연결함.
     /// </summary>
     public class WheelDebugView : MonoBehaviour
     {
@@ -48,15 +48,11 @@ namespace WheelSystem
             // 개별 점유자
             if (drawOccupants)
             {
-                var sensor = solver.GetComponent<PlatformOccupancySensor>();
-                if (sensor != null)
+                Gizmos.color = new Color(1f, 1f, 1f, 0.5f);
+                foreach (var occupant in solver.Occupants)
                 {
-                    Gizmos.color = new Color(1f, 1f, 1f, 0.5f);
-                    foreach (var occupant in sensor.Occupants)
-                    {
-                        if (occupant == null || !occupant.Contributes) continue;
-                        Gizmos.DrawWireCube(occupant.WorldPosition, Vector3.one * markerSize);
-                    }
+                    if (occupant == null || !occupant.Contributes) continue;
+                    Gizmos.DrawWireCube(occupant.WorldPosition, Vector3.one * markerSize);
                 }
             }
 
