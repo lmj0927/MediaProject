@@ -1092,6 +1092,8 @@ GameObject:
   - component: {fileID: 1375008966351705383}
   - component: {fileID: -5904113584553391795}
   - component: {fileID: -8961377330704769444}
+  - component: {fileID: 8838641806574887262}
+  - component: {fileID: -6700027793758235174}
   m_Layer: 0
   m_Name: Yellow
   m_TagString: Untagged
@@ -1224,3 +1226,44 @@ MonoBehaviour:
   braking: 10
   maxSpeed: 2
   rotationSpeed: 15
+--- !u!114 &8838641806574887262
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9191929856975032734}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b6e03129ce3ab4e46a3ad3dc3aa02388, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WeightSource
+  weight: 1
+  useRigidbodyMass: 0
+  measurePoint: {fileID: 8758781173081540722}
+  contributes: 1
+  detection: 0
+  lingerTime: 0.2
+  minSupportNormalY: -1
+  probeDistance: 0.15
+  probeMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+--- !u!114 &-6700027793758235174
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9191929856975032734}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e5459ee0f17206340832f4c4be1f13a3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WheelCarrier
+  radiusScale: 1.05
+  heightAbove: 4
+  heightBelow: 0.6
+  carryRotationWhenGrounded: 1
+  teleportThreshold: 0.5
+  groundSnapDistance: 0.08
