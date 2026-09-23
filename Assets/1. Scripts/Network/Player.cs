@@ -29,6 +29,10 @@ public class Player : NetworkBehaviour, IHoldable
     private bool _ignoringHolderCollision;
     private NetworkId _ignoredHolderId;
 
+    // 휠 연동. 둘 다 없어도 동작함(휠이 없는 씬 등).
+    private WheelCarrier _carrier;
+    private WeightSource _weightSource;
+
     [Networked] private int JumpCount { get; set; }
     [Networked] private int ThrowCount { get; set; }
     [Networked] private NetworkId HeldObjectId { get; set; }
@@ -45,6 +49,8 @@ public class Player : NetworkBehaviour, IHoldable
         _unityCc = GetComponent<CharacterController>();
         _colliders = GetComponentsInChildren<Collider>();
         _animator = GetComponentInChildren<Animator>();
+        _carrier = GetComponent<WheelCarrier>();
+        _weightSource = GetComponent<WeightSource>();
         EnsureHoldPoint();
     }
 
@@ -99,7 +105,21 @@ public class Player : NetworkBehaviour, IHoldable
             JumpCount++;
         }
 
+        // 휠에 실려 가는 이동을 자체 이동보다 먼저 적용함.
+        // NetworkCharacterController는 Move 전후 위치 차이로 속도를 계산하므로,
+        // 먼저 끝내 두면 애니메이터 Speed에 휠 이동이 섞이지 않음.
+        ApplyWheelCarry();
+
         _cc.Move(direction);
+
+        // 이번 틱의 최종 위치를 기록함. 다음 틱은 이 지점이 판과 함께 어디로 갔는지를 기준으로 옮김.
+        if (_carrier != null)
+            _carrier.EndTick(transform.position);
+
+        // 틱 안의 실제 위치를 무게 계산에 알려줌.
+        // 틱 밖에서는 transform이 화면용 보간 위치라 무게중심이 흔들림.
+        if (_weightSource != null)
+            _weightSource.SetSimulatedPosition(transform.position);
 
         if (Object.HasStateAuthority)
             UpdateCarriedObject();
@@ -109,6 +129,22 @@ public class Player : NetworkBehaviour, IHoldable
     {
         SyncHeldControllerAndCollision();
         UpdateAnimator();
+    }
+
+    /// <summary>
+    /// 휠 위에 있으면 휠과 함께 옮김.
+    /// CharacterController는 마찰로 끌려가지 않으므로 직접 옮겨야 함.
+    /// 착지 중이고 점프 중이 아니면 바닥 쪽으로 살짝 눌러 착지 판정이 끊기지 않게 함.
+    /// </summary>
+    private void ApplyWheelCarry()
+    {
+        if (_carrier == null || _unityCc == null || !_unityCc.enabled)
+            return;
+
+        bool snap = _cc.Grounded && _cc.Velocity.y <= 0f;
+        var delta = _carrier.GetCarryDelta(transform.position, _cc.Grounded, snap);
+        if (delta.sqrMagnitude > 0f)
+            _unityCc.Move(delta);
     }
 
     public void SnapToHoldPoint(Transform holdPoint)
@@ -152,6 +188,12 @@ public class Player : NetworkBehaviour, IHoldable
 
         IsHeldNet = true;
         HeldById = holder.Id;
+
+        // 들린 동안에는 발밑 검사로 지지 대상을 찾을 수 없으므로,
+        // 들고 있는 쪽 무게에 합산되도록 직접 연결함.
+        if (_weightSource != null)
+            _weightSource.SetSupportOverride(holder.GetComponent<WeightSource>());
+
         SyncHeldControllerAndCollision();
     }
 
@@ -162,6 +204,10 @@ public class Player : NetworkBehaviour, IHoldable
 
         IsHeldNet = false;
         HeldById = default;
+
+        if (_weightSource != null)
+            _weightSource.SetSupportOverride(null);
+
         SyncHeldControllerAndCollision();
 
         if (_cc != null)
@@ -177,6 +223,10 @@ public class Player : NetworkBehaviour, IHoldable
 
         IsHeldNet = false;
         HeldById = default;
+
+        if (_weightSource != null)
+            _weightSource.SetSupportOverride(null);
+
         SyncHeldControllerAndCollision();
 
         if (_cc != null)
