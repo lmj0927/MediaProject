@@ -14,7 +14,6 @@ GameObject:
   - component: {fileID: -6856935078557731034}
   - component: {fileID: -6217372363960024510}
   - component: {fileID: 1892259968821610670}
-  - component: {fileID: -7222364277549749647}
   m_Layer: 0
   m_Name: Green
   m_TagString: Untagged
@@ -147,24 +146,6 @@ MonoBehaviour:
   braking: 10
   maxSpeed: 2
   rotationSpeed: 15
---- !u!114 &-7222364277549749647
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 271733476973362416}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e5459ee0f17206340832f4c4be1f13a3, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::WheelCarrier
-  radiusScale: 1.05
-  heightAbove: 4
-  heightBelow: 0.6
-  carryRotationWhenGrounded: 1
-  teleportThreshold: 0.5
-  groundSnapDistance: 0.08
 --- !u!1 &306827480560455619
 GameObject:
   m_ObjectHideFlags: 0
