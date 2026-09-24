@@ -15,6 +15,11 @@ public class HoldableProp : NetworkBehaviour, IHoldable
     [Tooltip("던질 때 홀더와 겹치지 않도록 앞으로 밀어내는 거리")]
     [SerializeField] private float _throwSeparation = 0.75f;
 
+    [Tooltip("���ų� ���� �� ��� �ִ� ������� �浹 ���ø� �����ϴ� �ִ� �ð�.\n" +
+             "��ħ�� ���� Ǯ���� �� ��� �浹�� ���ƿ�. " +
+             "�̰� ������ �� ��ġ���� ĸ���� ��ģ ä�� �浹�� ����, ��ü�� ����� ���� ƨ�� ����.")]
+    [SerializeField] private float _releaseIgnoreMaxSeconds = 1f;
+
     private Rigidbody _rigidbody;
     private Collider[] _colliders;
 
@@ -23,6 +28,11 @@ public class HoldableProp : NetworkBehaviour, IHoldable
 
     /// <summary>Ignore를 건 홀더 NetworkId (해제 시 사용).</summary>
     private NetworkId _ignoredHolderId;
+    private Collider[] _ignoredHolderColliders;
+
+    // �� ����. �� �� ��� ������.
+    private WheelRider _wheelRider;
+    private WeightSource _weightSource;
 
     [Networked] private NetworkBool IsHeldNet { get; set; }
     [Networked] private NetworkId HeldById { get; set; }
@@ -31,19 +41,25 @@ public class HoldableProp : NetworkBehaviour, IHoldable
     [Networked] private Vector3 NetPosition { get; set; }
     [Networked] private Quaternion NetRotation { get; set; }
 
+    // ���� ���� ��ħ�� Ǯ�� ������ �浹�� ������ ���
+    [Networked] private NetworkId LastHolderId { get; set; }
+    [Networked] private TickTimer ReleaseIgnoreTimer { get; set; }
+
     public bool CanBeHeld => !IsHeldNet;
 
     private void Awake()
     {
         _rigidbody = GetComponent<Rigidbody>();
         _colliders = GetComponentsInChildren<Collider>();
+        _wheelRider = GetComponent<WheelRider>();
+        _weightSource = GetComponent<WeightSource>();
     }
 
     public override void Spawned()
     {
         NetPosition = transform.position;
         NetRotation = transform.rotation;
-        SyncHolderCollisionIgnore();
+        SyncHolderCollisionIgnore(canWriteState: true);
     }
 
     public override void Despawned(NetworkRunner runner, bool hasState)
@@ -53,7 +69,7 @@ public class HoldableProp : NetworkBehaviour, IHoldable
 
     public override void FixedUpdateNetwork()
     {
-        SyncHolderCollisionIgnore();
+        SyncHolderCollisionIgnore(canWriteState: Object.HasStateAuthority);
 
         // 프록시는 네트워크 포즈만 적용
         if (!Object.HasStateAuthority)
@@ -73,13 +89,34 @@ public class HoldableProp : NetworkBehaviour, IHoldable
 
     public override void Render()
     {
-        SyncHolderCollisionIgnore();
+        SyncHolderCollisionIgnore(canWriteState: false);
 
         if (!Object.HasStateAuthority)
             transform.SetPositionAndRotation(NetPosition, NetRotation);
     }
 
-    /// <summary>홀더 HoldPoint에 붙인다 (State Authority만).</summary>
+    /// <summary>
+    /// ��� ������ ȭ�鿡 �׸��� ������ �� ��ġ�� �ű�.
+    /// �÷��̾�� Fusion�� ƽ ���̸� ������ ��ġ�� �׷����µ�, ��ü�� ƽ ��ġ�� �ӹ��� ������
+    /// ���� �ٸ� ���ڷ� �׷��� �� ������ ��ü�� ����.
+    /// Render ������ ������� �����Ƿ� ��� Render�� ���� LateUpdate���� ó����.
+    /// ���� ƽ���� ��� �ִ� ���� �ٽ� ƽ ��ġ�� �ű�Ƿ� �ùķ��̼ǿ��� ���� ����.
+    /// </summary>
+    private void LateUpdate()
+    {
+        if (Object == null || !Object.IsValid || !IsHeldNet || !HeldById.IsValid || Runner == null)
+            return;
+
+        if (!Runner.TryFindObject(HeldById, out var holderObject))
+            return;
+
+        var holder = holderObject.GetComponent<Player>();
+        if (holder == null || holder.HoldPoint == null)
+            return;
+
+        transform.SetPositionAndRotation(holder.HoldPoint.position, holder.HoldPoint.rotation);
+    }
+
     public void SnapToHoldPoint(Transform holdPoint)
     {
         if (!Object.HasStateAuthority || holdPoint == null)
@@ -88,6 +125,10 @@ public class HoldableProp : NetworkBehaviour, IHoldable
         transform.SetPositionAndRotation(holdPoint.position, holdPoint.rotation);
         NetPosition = transform.position;
         NetRotation = transform.rotation;
+
+        // ƽ ���� ���� ��ġ�� ���� ��꿡 �˷���. ƽ �ۿ����� ȭ��� ��ġ�� �ٲ�� ����.
+        if (_weightSource != null)
+            _weightSource.SetSimulatedPosition(transform.position);
     }
 
     public void OnPickedUp(NetworkObject holder)
@@ -97,8 +138,15 @@ public class HoldableProp : NetworkBehaviour, IHoldable
 
         IsHeldNet = true;
         HeldById = holder.Id;
+        LastHolderId = default;
+        ReleaseIgnoreTimer = TickTimer.None;
         SetPhysicsHeld(true);
-        SyncHolderCollisionIgnore();
+
+        // �鸰 ���ȿ��� ��� �ִ� �� ���Կ� �ջ�ǵ��� ���� ������.
+        if (_weightSource != null)
+            _weightSource.SetSupportOverride(holder.GetComponent<WeightSource>());
+
+        SyncHolderCollisionIgnore(canWriteState: true);
     }
 
     public void OnReleased()
@@ -106,12 +154,19 @@ public class HoldableProp : NetworkBehaviour, IHoldable
         if (!Object.HasStateAuthority)
             return;
 
+        BeginReleaseIgnore();
+
         IsHeldNet = false;
         HeldById = default;
         SetPhysicsHeld(false);
-        SyncHolderCollisionIgnore();
-        if (_rigidbody != null)
-            _rigidbody.linearVelocity = Vector3.zero;
+
+        if (_weightSource != null)
+            _weightSource.SetSupportOverride(null);
+
+        SyncHolderCollisionIgnore(canWriteState: true);
+
+        // ���� �������� ������Ű�� �ٰ� �Բ� �޸��� �÷��̾�� �� �ӵ��� �ε���.
+        SetReleaseVelocity(Vector3.zero);
     }
 
     public void OnThrown(Vector3 worldVelocity)
@@ -119,24 +174,50 @@ public class HoldableProp : NetworkBehaviour, IHoldable
         if (!Object.HasStateAuthority)
             return;
 
+        BeginReleaseIgnore();
         ApplyThrowSeparation(worldVelocity);
 
         IsHeldNet = false;
         HeldById = default;
         SetPhysicsHeld(false);
-        SyncHolderCollisionIgnore();
+
+        if (_weightSource != null)
+            _weightSource.SetSupportOverride(null);
+
+        SyncHolderCollisionIgnore(canWriteState: true);
+
+        // ������ �ӵ��� �� �ӵ� ���� ����. �׷��� �޸��� �� ������ ������ ������ ���ư�.
+        SetReleaseVelocity(worldVelocity * _thrownMassScale);
 
         if (_rigidbody != null)
-        {
-            _rigidbody.linearVelocity = worldVelocity * _thrownMassScale;
             _rigidbody.angularVelocity = Vector3.zero;
-        }
 
         NetPosition = transform.position;
         NetRotation = transform.rotation;
     }
 
-    /// <summary>던지는 방향으로 살짝 밀어 홀더와 즉시 재충돌하는 것을 줄인다.</summary>
+    /// <summary>���� ������ ��� �ִ� ����� ����� �ΰ�, ��ħ�� Ǯ�� ������ �浹�� ��� ������.</summary>
+    private void BeginReleaseIgnore()
+    {
+        LastHolderId = HeldById;
+        ReleaseIgnoreTimer = TickTimer.CreateFromSeconds(Runner, _releaseIgnoreMaxSeconds);
+    }
+
+    /// <summary>
+    /// ���ų� ���� ������ �ӵ��� ������.
+    /// �� ����� �� �ӵ��� �⺻���� ��� �� ���� �߰� �ӵ��� ����.
+    /// </summary>
+    private void SetReleaseVelocity(Vector3 extraVelocity)
+    {
+        if (_rigidbody == null || _rigidbody.isKinematic)
+            return;
+
+        if (_wheelRider != null)
+            _wheelRider.InheritFrameVelocity(extraVelocity);
+        else
+            _rigidbody.linearVelocity = extraVelocity;
+    }
+
     private void ApplyThrowSeparation(Vector3 worldVelocity)
     {
         var push = worldVelocity;
@@ -157,22 +238,72 @@ public class HoldableProp : NetworkBehaviour, IHoldable
         _rigidbody.useGravity = !held;
     }
 
-    /// <summary>IsHeldNet에 맞춰 홀더와의 IgnoreCollision을 켜거나 끈다.</summary>
-    private void SyncHolderCollisionIgnore()
+    /// <summary>
+    /// ���� �浹�� �����ؾ� �� ����� ����.
+    /// ��� ������ ��� �ִ� ���, ���� ���Ķ�� ��ħ�� Ǯ���� ������ ������ ��� �ִ� ���.
+    /// </summary>
+    private NetworkId GetIgnoreTarget(bool canWriteState)
     {
         if (IsHeldNet && HeldById.IsValid)
+            return HeldById;
+
+        if (!LastHolderId.IsValid)
+            return default;
+
+        bool expired = ReleaseIgnoreTimer.ExpiredOrNotRunning(Runner);
+        bool stillOverlapping = !expired && IsOverlapping(LastHolderId);
+
+        if (stillOverlapping)
+            return LastHolderId;
+
+        // ��ħ�� Ǯ�Ȱų� �ð��� �� ��. ���� ����� ƽ ���� �����ڸ� ������.
+        if (canWriteState)
         {
-            if (_ignoringHolderCollision && _ignoredHolderId == HeldById)
+            LastHolderId = default;
+            ReleaseIgnoreTimer = TickTimer.None;
+        }
+        return default;
+    }
+
+    private bool IsOverlapping(NetworkId holderId)
+    {
+        if (Runner == null || !Runner.TryFindObject(holderId, out var holderObject))
+            return false;
+
+        var holderColliders = _ignoringHolderCollision && _ignoredHolderId == holderId && _ignoredHolderColliders != null
+            ? _ignoredHolderColliders
+            : holderObject.GetComponentsInChildren<Collider>();
+
+        foreach (var mine in _colliders)
+        {
+            if (mine == null || mine.isTrigger) continue;
+            foreach (var theirs in holderColliders)
+            {
+                if (theirs == null || theirs.isTrigger) continue;
+                if (mine.bounds.Intersects(theirs.bounds)) return true;
+            }
+        }
+        return false;
+    }
+
+    private void SyncHolderCollisionIgnore(bool canWriteState)
+    {
+        var target = GetIgnoreTarget(canWriteState);
+
+        if (target.IsValid)
+        {
+            if (_ignoringHolderCollision && _ignoredHolderId == target)
                 return;
 
             ClearHolderCollisionIgnore();
 
-            if (Runner == null || !Runner.TryFindObject(HeldById, out var holderObject))
+            if (Runner == null || !Runner.TryFindObject(target, out var holderObject))
                 return;
 
             HoldCollisionUtility.SetIgnoreCollisions(_colliders, holderObject.gameObject, ignore: true);
             _ignoringHolderCollision = true;
-            _ignoredHolderId = HeldById;
+            _ignoredHolderId = target;
+            _ignoredHolderColliders = holderObject.GetComponentsInChildren<Collider>();
             return;
         }
 
@@ -192,5 +323,6 @@ public class HoldableProp : NetworkBehaviour, IHoldable
 
         _ignoringHolderCollision = false;
         _ignoredHolderId = default;
+        _ignoredHolderColliders = null;
     }
 }
