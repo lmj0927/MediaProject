@@ -2,23 +2,32 @@ using Fusion;
 using UnityEngine;
 
 /// <summary>
-/// Networked prop (e.g. test crate) that can be held and thrown.
-/// Add to a NetworkObject with a Collider; Rigidbody recommended for throws.
-/// While held, collision with the holder is ignored (world / others still collide).
+/// 네트워크 상자 등 잡기 가능한 Prop.
+/// NetworkObject + Collider 필요. Rigidbody가 있으면 던지기에 사용.
+/// 잡혀 있는 동안 홀더와의 충돌만 무시한다.
 /// </summary>
 [RequireComponent(typeof(NetworkObject))]
 public class HoldableProp : NetworkBehaviour, IHoldable
 {
+    [Tooltip("던질 때 속도에 곱하는 배율")]
     [SerializeField] private float _thrownMassScale = 1f;
+
+    [Tooltip("던질 때 홀더와 겹치지 않도록 앞으로 밀어내는 거리")]
     [SerializeField] private float _throwSeparation = 0.75f;
 
     private Rigidbody _rigidbody;
     private Collider[] _colliders;
+
+    /// <summary>현재 홀더와 IgnoreCollision 중인지.</summary>
     private bool _ignoringHolderCollision;
+
+    /// <summary>Ignore를 건 홀더 NetworkId (해제 시 사용).</summary>
     private NetworkId _ignoredHolderId;
 
     [Networked] private NetworkBool IsHeldNet { get; set; }
     [Networked] private NetworkId HeldById { get; set; }
+
+    /// <summary>프록시용 위치/회전 복제 상태.</summary>
     [Networked] private Vector3 NetPosition { get; set; }
     [Networked] private Quaternion NetRotation { get; set; }
 
@@ -46,12 +55,15 @@ public class HoldableProp : NetworkBehaviour, IHoldable
     {
         SyncHolderCollisionIgnore();
 
+        // 프록시는 네트워크 포즈만 적용
         if (!Object.HasStateAuthority)
         {
             transform.SetPositionAndRotation(NetPosition, NetRotation);
             return;
         }
 
+        // 잡혀 있지 않을 때만 물리 결과를 네트워크 포즈에 기록
+        // (잡혀 있으면 Player.SnapToHoldPoint가 NetPosition을 갱신)
         if (!IsHeldNet)
         {
             NetPosition = transform.position;
@@ -67,6 +79,7 @@ public class HoldableProp : NetworkBehaviour, IHoldable
             transform.SetPositionAndRotation(NetPosition, NetRotation);
     }
 
+    /// <summary>홀더 HoldPoint에 붙인다 (State Authority만).</summary>
     public void SnapToHoldPoint(Transform holdPoint)
     {
         if (!Object.HasStateAuthority || holdPoint == null)
@@ -123,6 +136,7 @@ public class HoldableProp : NetworkBehaviour, IHoldable
         NetRotation = transform.rotation;
     }
 
+    /// <summary>던지는 방향으로 살짝 밀어 홀더와 즉시 재충돌하는 것을 줄인다.</summary>
     private void ApplyThrowSeparation(Vector3 worldVelocity)
     {
         var push = worldVelocity;
@@ -133,6 +147,7 @@ public class HoldableProp : NetworkBehaviour, IHoldable
         transform.position += push.normalized * _throwSeparation;
     }
 
+    /// <summary>잡힌 동안 kinematic, 놓이면 중력/물리 복구.</summary>
     private void SetPhysicsHeld(bool held)
     {
         if (_rigidbody == null)
@@ -142,6 +157,7 @@ public class HoldableProp : NetworkBehaviour, IHoldable
         _rigidbody.useGravity = !held;
     }
 
+    /// <summary>IsHeldNet에 맞춰 홀더와의 IgnoreCollision을 켜거나 끈다.</summary>
     private void SyncHolderCollisionIgnore()
     {
         if (IsHeldNet && HeldById.IsValid)
