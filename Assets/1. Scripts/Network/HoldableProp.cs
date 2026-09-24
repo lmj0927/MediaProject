@@ -1,4 +1,4 @@
-using Fusion;
+﻿using Fusion;
 using UnityEngine;
 
 /// <summary>
@@ -15,9 +15,11 @@ public class HoldableProp : NetworkBehaviour, IHoldable
     [Tooltip("던질 때 홀더와 겹치지 않도록 앞으로 밀어내는 거리")]
     [SerializeField] private float _throwSeparation = 0.75f;
 
-    [Tooltip("���ų� ���� �� ��� �ִ� ������� �浹 ���ø� �����ϴ� �ִ� �ð�.\n" +
-             "��ħ�� ���� Ǯ���� �� ��� �浹�� ���ƿ�. " +
-             "�̰� ������ �� ��ġ���� ĸ���� ��ģ ä�� �浹�� ����, ��ü�� ����� ���� ƨ�� ����.")]
+
+    [Tooltip("놓거나 던진 뒤 들고 있던 사람과의 충돌 무시를 유지하는 최대 시간.\n" +
+             "겹침이 먼저 풀리면 그 즉시 충돌이 돌아옴. " +
+             "이게 없으면 손 위치에서 캡슐과 겹친 채로 충돌이 켜져, 물체와 사람이 서로 튕겨 나감.")]
+
     [SerializeField] private float _releaseIgnoreMaxSeconds = 1f;
 
     private Rigidbody _rigidbody;
@@ -30,7 +32,8 @@ public class HoldableProp : NetworkBehaviour, IHoldable
     private NetworkId _ignoredHolderId;
     private Collider[] _ignoredHolderColliders;
 
-    // �� ����. �� �� ��� ������.
+    // 휠 연동. 둘 다 없어도 동작함.
+
     private WheelRider _wheelRider;
     private WeightSource _weightSource;
 
@@ -41,7 +44,7 @@ public class HoldableProp : NetworkBehaviour, IHoldable
     [Networked] private Vector3 NetPosition { get; set; }
     [Networked] private Quaternion NetRotation { get; set; }
 
-    // ���� ���� ��ħ�� Ǯ�� ������ �浹�� ������ ���
+    // 놓은 직후 겹침이 풀릴 때까지 충돌을 무시할 대상
     [Networked] private NetworkId LastHolderId { get; set; }
     [Networked] private TickTimer ReleaseIgnoreTimer { get; set; }
 
@@ -96,11 +99,11 @@ public class HoldableProp : NetworkBehaviour, IHoldable
     }
 
     /// <summary>
-    /// ��� ������ ȭ�鿡 �׸��� ������ �� ��ġ�� �ű�.
-    /// �÷��̾�� Fusion�� ƽ ���̸� ������ ��ġ�� �׷����µ�, ��ü�� ƽ ��ġ�� �ӹ��� ������
-    /// ���� �ٸ� ���ڷ� �׷��� �� ������ ��ü�� ����.
-    /// Render ������ ������� �����Ƿ� ��� Render�� ���� LateUpdate���� ó����.
-    /// ���� ƽ���� ��� �ִ� ���� �ٽ� ƽ ��ġ�� �ű�Ƿ� �ùķ��̼ǿ��� ���� ����.
+    /// 들려 있으면 화면에 그리기 직전에 손 위치로 옮김.
+    /// 플레이어는 Fusion이 틱 사이를 보간한 위치에 그려지는데, 물체는 틱 위치에 머물러 있으면
+    /// 둘이 다른 박자로 그려져 손 위에서 물체가 떨림.
+    /// Render 순서는 보장되지 않으므로 모든 Render가 끝난 LateUpdate에서 처리함.
+    /// 다음 틱에서 들고 있는 쪽이 다시 틱 위치로 옮기므로 시뮬레이션에는 영향 없음.
     /// </summary>
     private void LateUpdate()
     {
@@ -126,7 +129,8 @@ public class HoldableProp : NetworkBehaviour, IHoldable
         NetPosition = transform.position;
         NetRotation = transform.rotation;
 
-        // ƽ ���� ���� ��ġ�� ���� ��꿡 �˷���. ƽ �ۿ����� ȭ��� ��ġ�� �ٲ�� ����.
+
+        // 틱 안의 실제 위치를 무게 계산에 알려줌. 틱 밖에서는 화면용 위치로 바뀌어 있음.
         if (_weightSource != null)
             _weightSource.SetSimulatedPosition(transform.position);
     }
@@ -142,7 +146,7 @@ public class HoldableProp : NetworkBehaviour, IHoldable
         ReleaseIgnoreTimer = TickTimer.None;
         SetPhysicsHeld(true);
 
-        // �鸰 ���ȿ��� ��� �ִ� �� ���Կ� �ջ�ǵ��� ���� ������.
+        // 들린 동안에는 들고 있는 쪽 무게에 합산되도록 직접 연결함.
         if (_weightSource != null)
             _weightSource.SetSupportOverride(holder.GetComponent<WeightSource>());
 
@@ -165,7 +169,8 @@ public class HoldableProp : NetworkBehaviour, IHoldable
 
         SyncHolderCollisionIgnore(canWriteState: true);
 
-        // ���� �������� ������Ű�� �ٰ� �Բ� �޸��� �÷��̾�� �� �ӵ��� �ε���.
+        // 월드 기준으로 정지시키면 휠과 함께 달리던 플레이어에게 휠 속도로 부딪힘.
+
         SetReleaseVelocity(Vector3.zero);
     }
 
@@ -186,7 +191,7 @@ public class HoldableProp : NetworkBehaviour, IHoldable
 
         SyncHolderCollisionIgnore(canWriteState: true);
 
-        // ������ �ӵ��� �� �ӵ� ���� ����. �׷��� �޸��� �� ������ ������ ������ ���ư�.
+        // 던지는 속도는 휠 속도 위에 더함. 그래야 달리는 휠 위에서 던져도 앞으로 날아감.
         SetReleaseVelocity(worldVelocity * _thrownMassScale);
 
         if (_rigidbody != null)
@@ -196,7 +201,8 @@ public class HoldableProp : NetworkBehaviour, IHoldable
         NetRotation = transform.rotation;
     }
 
-    /// <summary>���� ������ ��� �ִ� ����� ����� �ΰ�, ��ħ�� Ǯ�� ������ �浹�� ��� ������.</summary>
+
+    /// <summary>놓는 순간의 들고 있던 사람을 기억해 두고, 겹침이 풀릴 때까지 충돌을 계속 무시함.</summary>
     private void BeginReleaseIgnore()
     {
         LastHolderId = HeldById;
@@ -204,8 +210,8 @@ public class HoldableProp : NetworkBehaviour, IHoldable
     }
 
     /// <summary>
-    /// ���ų� ���� ������ �ӵ��� ������.
-    /// �� ����� �� �ӵ��� �⺻���� ��� �� ���� �߰� �ӵ��� ����.
+    /// 놓거나 던진 직후의 속도를 설정함.
+    /// 휠 위라면 휠 속도를 기본으로 깔고 그 위에 추가 속도를 더함.
     /// </summary>
     private void SetReleaseVelocity(Vector3 extraVelocity)
     {
@@ -239,8 +245,8 @@ public class HoldableProp : NetworkBehaviour, IHoldable
     }
 
     /// <summary>
-    /// ���� �浹�� �����ؾ� �� ����� ����.
-    /// ��� ������ ��� �ִ� ���, ���� ���Ķ�� ��ħ�� Ǯ���� ������ ������ ��� �ִ� ���.
+    /// 지금 충돌을 무시해야 할 대상을 구함.
+    /// 들려 있으면 들고 있는 사람, 놓은 직후라면 겹침이 풀리기 전까지 직전에 들고 있던 사람.
     /// </summary>
     private NetworkId GetIgnoreTarget(bool canWriteState)
     {
@@ -256,7 +262,7 @@ public class HoldableProp : NetworkBehaviour, IHoldable
         if (stillOverlapping)
             return LastHolderId;
 
-        // ��ħ�� Ǯ�Ȱų� �ð��� �� ��. ���� ����� ƽ ���� �����ڸ� ������.
+        // 겹침이 풀렸거나 시간이 다 됨. 상태 쓰기는 틱 안의 권한자만 가능함.
         if (canWriteState)
         {
             LastHolderId = default;
