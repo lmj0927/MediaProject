@@ -2,37 +2,46 @@ using Fusion;
 using UnityEngine;
 
 /// <summary>
-/// Networked prop (e.g. test crate) that can be held and thrown.
-/// Add to a NetworkObject with a Collider; Rigidbody recommended for throws.
-/// While held, collision with the holder is ignored (world / others still collide).
+/// ë„¤íŠ¸ì›Œí¬ ìƒì ë“± ì¡ê¸° ê°€ëŠ¥í•œ Prop.
+/// NetworkObject + Collider í•„ìš”. Rigidbodyê°€ ìˆìœ¼ë©´ ë˜ì§€ê¸°ì— ì‚¬ìš©.
+/// ì¡í˜€ ìˆëŠ” ë™ì•ˆ í™€ë”ì™€ì˜ ì¶©ëŒë§Œ ë¬´ì‹œí•œë‹¤.
 /// </summary>
 [RequireComponent(typeof(NetworkObject))]
 public class HoldableProp : NetworkBehaviour, IHoldable
 {
+    [Tooltip("ë˜ì§ˆ ë•Œ ì†ë„ì— ê³±í•˜ëŠ” ë°°ìœ¨")]
     [SerializeField] private float _thrownMassScale = 1f;
+
+    [Tooltip("ë˜ì§ˆ ë•Œ í™€ë”ì™€ ê²¹ì¹˜ì§€ ì•Šë„ë¡ ì•ìœ¼ë¡œ ë°€ì–´ë‚´ëŠ” ê±°ë¦¬")]
     [SerializeField] private float _throwSeparation = 0.75f;
 
-    [Tooltip("³õ°Å³ª ´øÁø µÚ µé°í ÀÖ´ø »ç¶÷°úÀÇ Ãæµ¹ ¹«½Ã¸¦ À¯ÁöÇÏ´Â ÃÖ´ë ½Ã°£.\n" +
-             "°ãÄ§ÀÌ ¸ÕÀú Ç®¸®¸é ±× Áï½Ã Ãæµ¹ÀÌ µ¹¾Æ¿È. " +
-             "ÀÌ°Ô ¾øÀ¸¸é ¼Õ À§Ä¡¿¡¼­ Ä¸½¶°ú °ãÄ£ Ã¤·Î Ãæµ¹ÀÌ ÄÑÁ®, ¹°Ã¼¿Í »ç¶÷ÀÌ ¼­·Î Æ¨°Ü ³ª°¨.")]
+    [Tooltip("ï¿½ï¿½ï¿½Å³ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½Ö´ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½æµ¹ ï¿½ï¿½ï¿½Ã¸ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï´ï¿½ ï¿½Ö´ï¿½ ï¿½Ã°ï¿½.\n" +
+             "ï¿½ï¿½Ä§ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ Ç®ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½æµ¹ï¿½ï¿½ ï¿½ï¿½ï¿½Æ¿ï¿½. " +
+             "ï¿½Ì°ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½Ä¡ï¿½ï¿½ï¿½ï¿½ Ä¸ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ä£ Ã¤ï¿½ï¿½ ï¿½æµ¹ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½, ï¿½ï¿½Ã¼ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ Æ¨ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½.")]
     [SerializeField] private float _releaseIgnoreMaxSeconds = 1f;
 
     private Rigidbody _rigidbody;
     private Collider[] _colliders;
+
+    /// <summary>í˜„ì¬ í™€ë”ì™€ IgnoreCollision ì¤‘ì¸ì§€.</summary>
     private bool _ignoringHolderCollision;
+
+    /// <summary>Ignoreë¥¼ ê±´ í™€ë” NetworkId (í•´ì œ ì‹œ ì‚¬ìš©).</summary>
     private NetworkId _ignoredHolderId;
     private Collider[] _ignoredHolderColliders;
 
-    // ÈÙ ¿¬µ¿. µÑ ´Ù ¾ø¾îµµ µ¿ÀÛÇÔ.
+    // ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½. ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½îµµ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½.
     private WheelRider _wheelRider;
     private WeightSource _weightSource;
 
     [Networked] private NetworkBool IsHeldNet { get; set; }
     [Networked] private NetworkId HeldById { get; set; }
+
+    /// <summary>í”„ë¡ì‹œìš© ìœ„ì¹˜/íšŒì „ ë³µì œ ìƒíƒœ.</summary>
     [Networked] private Vector3 NetPosition { get; set; }
     [Networked] private Quaternion NetRotation { get; set; }
 
-    // ³õÀº Á÷ÈÄ °ãÄ§ÀÌ Ç®¸± ¶§±îÁö Ãæµ¹À» ¹«½ÃÇÒ ´ë»ó
+    // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ä§ï¿½ï¿½ Ç®ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½æµ¹ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½
     [Networked] private NetworkId LastHolderId { get; set; }
     [Networked] private TickTimer ReleaseIgnoreTimer { get; set; }
 
@@ -62,12 +71,15 @@ public class HoldableProp : NetworkBehaviour, IHoldable
     {
         SyncHolderCollisionIgnore(canWriteState: Object.HasStateAuthority);
 
+        // í”„ë¡ì‹œëŠ” ë„¤íŠ¸ì›Œí¬ í¬ì¦ˆë§Œ ì ìš©
         if (!Object.HasStateAuthority)
         {
             transform.SetPositionAndRotation(NetPosition, NetRotation);
             return;
         }
 
+        // ì¡í˜€ ìˆì§€ ì•Šì„ ë•Œë§Œ ë¬¼ë¦¬ ê²°ê³¼ë¥¼ ë„¤íŠ¸ì›Œí¬ í¬ì¦ˆì— ê¸°ë¡
+        // (ì¡í˜€ ìˆìœ¼ë©´ Player.SnapToHoldPointê°€ NetPositionì„ ê°±ì‹ )
         if (!IsHeldNet)
         {
             NetPosition = transform.position;
@@ -84,11 +96,11 @@ public class HoldableProp : NetworkBehaviour, IHoldable
     }
 
     /// <summary>
-    /// µé·Á ÀÖÀ¸¸é È­¸é¿¡ ±×¸®±â Á÷Àü¿¡ ¼Õ À§Ä¡·Î ¿Å±è.
-    /// ÇÃ·¹ÀÌ¾î´Â FusionÀÌ Æ½ »çÀÌ¸¦ º¸°£ÇÑ À§Ä¡¿¡ ±×·ÁÁö´Âµ¥, ¹°Ã¼´Â Æ½ À§Ä¡¿¡ ¸Ó¹°·¯ ÀÖÀ¸¸é
-    /// µÑÀÌ ´Ù¸¥ ¹ÚÀÚ·Î ±×·ÁÁ® ¼Õ À§¿¡¼­ ¹°Ã¼°¡ ¶³¸².
-    /// Render ¼ø¼­´Â º¸ÀåµÇÁö ¾ÊÀ¸¹Ç·Î ¸ğµç Render°¡ ³¡³­ LateUpdate¿¡¼­ Ã³¸®ÇÔ.
-    /// ´ÙÀ½ Æ½¿¡¼­ µé°í ÀÖ´Â ÂÊÀÌ ´Ù½Ã Æ½ À§Ä¡·Î ¿Å±â¹Ç·Î ½Ã¹Ä·¹ÀÌ¼Ç¿¡´Â ¿µÇâ ¾øÀ½.
+    /// ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ È­ï¿½é¿¡ ï¿½×¸ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½Ä¡ï¿½ï¿½ ï¿½Å±ï¿½.
+    /// ï¿½Ã·ï¿½ï¿½Ì¾ï¿½ï¿½ Fusionï¿½ï¿½ Æ½ ï¿½ï¿½ï¿½Ì¸ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ä¡ï¿½ï¿½ ï¿½×·ï¿½ï¿½ï¿½ï¿½Âµï¿½, ï¿½ï¿½Ã¼ï¿½ï¿½ Æ½ ï¿½ï¿½Ä¡ï¿½ï¿½ ï¿½Ó¹ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+    /// ï¿½ï¿½ï¿½ï¿½ ï¿½Ù¸ï¿½ ï¿½ï¿½ï¿½Ú·ï¿½ ï¿½×·ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ã¼ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½.
+    /// Render ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ç·ï¿½ ï¿½ï¿½ï¿½ Renderï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ LateUpdateï¿½ï¿½ï¿½ï¿½ Ã³ï¿½ï¿½ï¿½ï¿½.
+    /// ï¿½ï¿½ï¿½ï¿½ Æ½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½Ö´ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ù½ï¿½ Æ½ ï¿½ï¿½Ä¡ï¿½ï¿½ ï¿½Å±ï¿½Ç·ï¿½ ï¿½Ã¹Ä·ï¿½ï¿½Ì¼Ç¿ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½.
     /// </summary>
     private void LateUpdate()
     {
@@ -114,7 +126,7 @@ public class HoldableProp : NetworkBehaviour, IHoldable
         NetPosition = transform.position;
         NetRotation = transform.rotation;
 
-        // Æ½ ¾ÈÀÇ ½ÇÁ¦ À§Ä¡¸¦ ¹«°Ô °è»ê¿¡ ¾Ë·ÁÁÜ. Æ½ ¹Û¿¡¼­´Â È­¸é¿ë À§Ä¡·Î ¹Ù²î¾î ÀÖÀ½.
+        // Æ½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ä¡ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ê¿¡ ï¿½Ë·ï¿½ï¿½ï¿½. Æ½ ï¿½Û¿ï¿½ï¿½ï¿½ï¿½ï¿½ È­ï¿½ï¿½ï¿½ ï¿½ï¿½Ä¡ï¿½ï¿½ ï¿½Ù²ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½.
         if (_weightSource != null)
             _weightSource.SetSimulatedPosition(transform.position);
     }
@@ -130,7 +142,7 @@ public class HoldableProp : NetworkBehaviour, IHoldable
         ReleaseIgnoreTimer = TickTimer.None;
         SetPhysicsHeld(true);
 
-        // µé¸° µ¿¾È¿¡´Â µé°í ÀÖ´Â ÂÊ ¹«°Ô¿¡ ÇÕ»êµÇµµ·Ï Á÷Á¢ ¿¬°áÇÔ.
+        // ï¿½é¸° ï¿½ï¿½ï¿½È¿ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½Ö´ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½Ô¿ï¿½ ï¿½Õ»ï¿½Çµï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½.
         if (_weightSource != null)
             _weightSource.SetSupportOverride(holder.GetComponent<WeightSource>());
 
@@ -153,7 +165,7 @@ public class HoldableProp : NetworkBehaviour, IHoldable
 
         SyncHolderCollisionIgnore(canWriteState: true);
 
-        // ¿ùµå ±âÁØÀ¸·Î Á¤Áö½ÃÅ°¸é ÈÙ°ú ÇÔ²² ´Ş¸®´ø ÇÃ·¹ÀÌ¾î¿¡°Ô ÈÙ ¼Óµµ·Î ºÎµúÈû.
+        // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Å°ï¿½ï¿½ ï¿½Ù°ï¿½ ï¿½Ô²ï¿½ ï¿½Ş¸ï¿½ï¿½ï¿½ ï¿½Ã·ï¿½ï¿½Ì¾î¿¡ï¿½ï¿½ ï¿½ï¿½ ï¿½Óµï¿½ï¿½ï¿½ ï¿½Îµï¿½ï¿½ï¿½.
         SetReleaseVelocity(Vector3.zero);
     }
 
@@ -174,7 +186,7 @@ public class HoldableProp : NetworkBehaviour, IHoldable
 
         SyncHolderCollisionIgnore(canWriteState: true);
 
-        // ´øÁö´Â ¼Óµµ´Â ÈÙ ¼Óµµ À§¿¡ ´õÇÔ. ±×·¡¾ß ´Ş¸®´Â ÈÙ À§¿¡¼­ ´øÁ®µµ ¾ÕÀ¸·Î ³¯¾Æ°¨.
+        // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Óµï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½Óµï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½. ï¿½×·ï¿½ï¿½ï¿½ ï¿½Ş¸ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Æ°ï¿½.
         SetReleaseVelocity(worldVelocity * _thrownMassScale);
 
         if (_rigidbody != null)
@@ -184,7 +196,7 @@ public class HoldableProp : NetworkBehaviour, IHoldable
         NetRotation = transform.rotation;
     }
 
-    /// <summary>³õ´Â ¼ø°£ÀÇ µé°í ÀÖ´ø »ç¶÷À» ±â¾ïÇØ µÎ°í, °ãÄ§ÀÌ Ç®¸± ¶§±îÁö Ãæµ¹À» °è¼Ó ¹«½ÃÇÔ.</summary>
+    /// <summary>ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½Ö´ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Î°ï¿½, ï¿½ï¿½Ä§ï¿½ï¿½ Ç®ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½æµ¹ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½.</summary>
     private void BeginReleaseIgnore()
     {
         LastHolderId = HeldById;
@@ -192,8 +204,8 @@ public class HoldableProp : NetworkBehaviour, IHoldable
     }
 
     /// <summary>
-    /// ³õ°Å³ª ´øÁø Á÷ÈÄÀÇ ¼Óµµ¸¦ ¼³Á¤ÇÔ.
-    /// ÈÙ À§¶ó¸é ÈÙ ¼Óµµ¸¦ ±âº»À¸·Î ±ò°í ±× À§¿¡ Ãß°¡ ¼Óµµ¸¦ ´õÇÔ.
+    /// ï¿½ï¿½ï¿½Å³ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Óµï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½.
+    /// ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½Óµï¿½ï¿½ï¿½ ï¿½âº»ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ß°ï¿½ ï¿½Óµï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½.
     /// </summary>
     private void SetReleaseVelocity(Vector3 extraVelocity)
     {
@@ -216,6 +228,7 @@ public class HoldableProp : NetworkBehaviour, IHoldable
         transform.position += push.normalized * _throwSeparation;
     }
 
+    /// <summary>ì¡íŒ ë™ì•ˆ kinematic, ë†“ì´ë©´ ì¤‘ë ¥/ë¬¼ë¦¬ ë³µêµ¬.</summary>
     private void SetPhysicsHeld(bool held)
     {
         if (_rigidbody == null)
@@ -226,8 +239,8 @@ public class HoldableProp : NetworkBehaviour, IHoldable
     }
 
     /// <summary>
-    /// Áö±İ Ãæµ¹À» ¹«½ÃÇØ¾ß ÇÒ ´ë»óÀ» ±¸ÇÔ.
-    /// µé·Á ÀÖÀ¸¸é µé°í ÀÖ´Â »ç¶÷, ³õÀº Á÷ÈÄ¶ó¸é °ãÄ§ÀÌ Ç®¸®±â Àü±îÁö Á÷Àü¿¡ µé°í ÀÖ´ø »ç¶÷.
+    /// ï¿½ï¿½ï¿½ï¿½ ï¿½æµ¹ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ø¾ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½.
+    /// ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½Ö´ï¿½ ï¿½ï¿½ï¿½, ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ä¶ï¿½ï¿½ ï¿½ï¿½Ä§ï¿½ï¿½ Ç®ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½Ö´ï¿½ ï¿½ï¿½ï¿½.
     /// </summary>
     private NetworkId GetIgnoreTarget(bool canWriteState)
     {
@@ -243,7 +256,7 @@ public class HoldableProp : NetworkBehaviour, IHoldable
         if (stillOverlapping)
             return LastHolderId;
 
-        // °ãÄ§ÀÌ Ç®·È°Å³ª ½Ã°£ÀÌ ´Ù µÊ. »óÅÂ ¾²±â´Â Æ½ ¾ÈÀÇ ±ÇÇÑÀÚ¸¸ °¡´ÉÇÔ.
+        // ï¿½ï¿½Ä§ï¿½ï¿½ Ç®ï¿½È°Å³ï¿½ ï¿½Ã°ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½. ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ Æ½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ú¸ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½.
         if (canWriteState)
         {
             LastHolderId = default;

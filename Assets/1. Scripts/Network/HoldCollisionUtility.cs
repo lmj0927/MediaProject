@@ -1,11 +1,14 @@
 using UnityEngine;
 
 /// <summary>
-/// Ignores physics collisions between a holdable's colliders and a holder GameObject
-/// (CharacterController + child colliders) without disabling world collision.
+/// 잡은 대상과 홀더(캐릭터) 사이 물리 충돌만 무시한다.
+/// 바닥·다른 오브젝트와의 충돌은 유지한다.
 /// </summary>
 public static class HoldCollisionUtility
 {
+    /// <summary>
+    /// holdable 콜라이더들과 holder(및 자식) 콜라이더 쌍에 IgnoreCollision을 설정한다.
+    /// </summary>
     public static void SetIgnoreCollisions(Collider[] holdableColliders, GameObject holder, bool ignore)
     {
         if (holdableColliders == null || holder == null)
