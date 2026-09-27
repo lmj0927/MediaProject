@@ -1,17 +1,12 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using Fusion;
 using UnityEngine;
 
 /// <summary>
 /// 판에 하중을 싣는 대상. 무게 정보와 접촉 관계를 함께 관리함.
 ///
 /// 판정은 트리거 체적이 아니라 실제 지지 관계를 따름.
-/// 체적으로 재면 공중에 떠 있는 대상까지 무게로 잡힘.
-///
-/// 지지 관계를 알아내는 방법은 두 가지.
-/// - Collision: 충돌 콜백. 물리로 움직이는 Rigidbody 대상용.
-/// - Probe: 발밑 SphereCast. CharacterController처럼 충돌 콜백이 오지 않는 대상용.
-/// Auto로 두면 움직이는 Rigidbody가 있으면 Collision, 없으면 Probe를 씀.
-///
+/// Host State Authority에서만 Probe/만료를 갱신한다 (CenterOfMassSolver가 TickAllSupport 호출).
 /// </summary>
 [DisallowMultipleComponent]
 public class WeightSource : MonoBehaviour
@@ -65,6 +60,7 @@ public class WeightSource : MonoBehaviour
     private CharacterController characterController;
     private Collider ownCollider;
     private WeightSource supportOverride;
+    private NetworkObject networkObject;
 
     private float platformExpiry = -1f;
     private float weightMultiplier = 1f;
@@ -73,16 +69,32 @@ public class WeightSource : MonoBehaviour
     private float simulatedPositionTime = -1f;
     private const float SimulatedPositionLifetime = 0.1f;
 
-    // ---- 무게 정보 ----
+    private float SimTime
+    {
+        get
+        {
+            var runner = NetworkRunner.GetRunnerForGameObject(gameObject);
+            if (runner != null && runner.IsRunning)
+                return (float)runner.SimulationTime;
+            return Time.time;
+        }
+    }
+
+    private bool HasStateAuthority
+    {
+        get
+        {
+            if (networkObject == null)
+                networkObject = GetComponentInParent<NetworkObject>();
+            return networkObject != null && networkObject.IsValid && networkObject.HasStateAuthority;
+        }
+    }
 
     public Vector3 WorldPosition =>
         (measurePoint != null ? measurePoint.position : transform.position) + PositionCorrection;
 
-    /// <summary>
-    /// 화면용 보간 위치와 실제 시뮬레이션 위치의 차이.
-    /// </summary>
     private Vector3 PositionCorrection =>
-        simulatedPositionTime >= 0f && Time.time - simulatedPositionTime <= SimulatedPositionLifetime
+        simulatedPositionTime >= 0f && SimTime - simulatedPositionTime <= SimulatedPositionLifetime
             ? simulatedPosition - transform.position
             : Vector3.zero;
 
@@ -101,15 +113,10 @@ public class WeightSource : MonoBehaviour
         set => contributes = value;
     }
 
-    // ---- 접촉 정보 ----
-
-    /// <summary>판에 직접 닿아 있는 경우 그 솔버. 아니면 null.</summary>
     public CenterOfMassSolver DirectPlatform { get; private set; }
 
-    /// <summary>현재 지지 관계로 이어진 다른 무게 소스들.</summary>
     public IReadOnlyCollection<WeightSource> Neighbors => neighborExpiry.Keys;
 
-    /// <summary>현재 발밑 검사 방식을 쓰는지.</summary>
     public bool UsesProbe => detection switch
     {
         SupportDetection.Probe => true,
@@ -117,44 +124,57 @@ public class WeightSource : MonoBehaviour
         _ => cachedBody == null || cachedBody.isKinematic
     };
 
-    // ---- 무게 조절 API ----
+    /// <summary>Host COM 틱 직전에 모든 SA WeightSource의 지지 그래프를 갱신함.</summary>
+    public static void TickAllSupport()
+    {
+        for (int i = 0; i < All.Count; i++)
+        {
+            var source = All[i];
+            if (source != null && source.isActiveAndEnabled)
+                source.TickSupport();
+        }
+    }
 
-    /// <summary>기본 무게를 바꿈. 아이템 획득 등 영구적인 변화에 사용.</summary>
+    public void TickSupport()
+    {
+        if (!HasStateAuthority)
+            return;
+
+        ExpireStaleLinks();
+
+        if (supportOverride != null && supportOverride.isActiveAndEnabled)
+        {
+            Link(supportOverride, persistent: false);
+            return;
+        }
+
+        if (UsesProbe)
+            Probe();
+    }
+
     public void SetWeight(float value)
     {
         weight = Mathf.Max(0f, value);
         useRigidbodyMass = false;
     }
 
-    /// <summary>일시적인 무게 배율. 내리찍기 같은 순간적인 변화에 사용.</summary>
     public void SetWeightMultiplier(float value)
     {
         weightMultiplier = Mathf.Max(0f, value);
     }
 
-    /// <summary>현재 적용 중인 배율.</summary>
     public float WeightMultiplier => weightMultiplier;
 
-    /// <summary>
-    /// 시뮬레이션 기준 위치를 알려줌.
-    /// 네트워크로 움직이는 캐릭터는 매 틱 이동이 끝난 직후 호출할 것.
-    /// 호출이 끊기면 잠시 후 자동으로 transform 위치로 돌아감.
-    /// </summary>
     public void SetSimulatedPosition(Vector3 position)
     {
         simulatedPosition = position;
-        simulatedPositionTime = Time.time;
+        simulatedPositionTime = SimTime;
     }
 
-    /// <summary>
-    /// 들려 있는 동안 지지 대상을 강제로 지정함. null이면 해제.
-    /// </summary>
     public void SetSupportOverride(WeightSource supporter)
     {
         supportOverride = supporter == this ? null : supporter;
     }
-
-    // ---- 수명 ----
 
     private void Reset()
     {
@@ -166,17 +186,16 @@ public class WeightSource : MonoBehaviour
         cachedBody = GetComponent<Rigidbody>();
         characterController = GetComponent<CharacterController>();
         ownCollider = GetComponent<Collider>();
+        networkObject = GetComponentInParent<NetworkObject>();
     }
 
     private void Awake()
     {
         CacheComponents();
 
-        // 잠들면 OnCollisionStay가 끊겨 연결이 만료됨
         if (cachedBody != null && !cachedBody.isKinematic)
             cachedBody.sleepThreshold = 0f;
 
-        // 판의 보간과 어긋나면 떨려 보임
         if (cachedBody != null && !cachedBody.isKinematic &&
             cachedBody.interpolation == RigidbodyInterpolation.None)
         {
@@ -194,22 +213,11 @@ public class WeightSource : MonoBehaviour
         platformExpiry = -1f;
     }
 
-    private void FixedUpdate()
+    private void ExpireStaleLinks()
     {
-        // 들려 있으면 지지 대상이 정해져 있으므로 발밑 검사를 하지 않음
-        if (supportOverride != null && supportOverride.isActiveAndEnabled)
-        {
-            Link(supportOverride, persistent: false);
-            return;
-        }
+        float now = SimTime;
 
-        if (UsesProbe) Probe();
-    }
-
-    private void Update()
-    {
-        // 유예가 끝난 연결 정리
-        if (platformExpiry >= 0f && Time.time >= platformExpiry)
+        if (platformExpiry >= 0f && now >= platformExpiry)
         {
             DirectPlatform = null;
             platformExpiry = -1f;
@@ -220,13 +228,11 @@ public class WeightSource : MonoBehaviour
         scratch.Clear();
         foreach (var kvp in neighborExpiry)
         {
-            if (kvp.Key == null || (kvp.Value >= 0f && Time.time >= kvp.Value))
+            if (kvp.Key == null || (kvp.Value >= 0f && now >= kvp.Value))
                 scratch.Add(kvp.Key);
         }
         foreach (var key in scratch) neighborExpiry.Remove(key);
     }
-
-    // ---- Probe 방식 ----
 
     private void Probe()
     {
@@ -243,7 +249,6 @@ public class WeightSource : MonoBehaviour
             var col = probeHits[i].collider;
             if (col == null || col.transform.IsChildOf(transform)) continue;
 
-            // 내가 들고 있는 대상은 바닥이 될 수 없음. 발밑과 겹쳐 서로를 바닥으로 삼는 섬이 생김.
             var carried = col.GetComponentInParent<WeightSource>();
             if (carried != null && carried.supportOverride == this) continue;
 
@@ -268,7 +273,6 @@ public class WeightSource : MonoBehaviour
             Link(other, persistent: false);
     }
 
-    /// <summary>발밑 검사에 쓸 구체의 시작점, 반지름, 거리를 구함.</summary>
     private void GetProbeShape(out Vector3 origin, out float radius, out float distance)
     {
         Vector3 bottom;
@@ -297,25 +301,22 @@ public class WeightSource : MonoBehaviour
             distance = probeDistance + ProbeSkin;
         }
 
-        // 바닥에서 반지름만큼 올린 지점에서 쏴야 시작부터 바닥에 파묻히지 않음
         origin = bottom + Vector3.up * (radius + ProbeSkin) + PositionCorrection;
         distance += radius;
     }
 
-    // ---- Collision 방식 ----
-
     private void OnCollisionEnter(Collision collision) => Connect(collision);
 
-    // 접촉이 유지되는 동안 계속 연결을 갱신함
     private void OnCollisionStay(Collision collision) => Connect(collision);
 
     private void OnCollisionExit(Collision collision)
     {
-        // 방식과 무관하게 처리함. 들어 올리면 Probe로 전환되어 신호가 버려짐.
+        if (!HasStateAuthority) return;
+
         var solver = collision.transform.GetComponentInParent<CenterOfMassSolver>();
         if (solver != null && solver == DirectPlatform)
         {
-            platformExpiry = Time.time + lingerTime;
+            platformExpiry = SimTime + lingerTime;
             return;
         }
 
@@ -329,10 +330,10 @@ public class WeightSource : MonoBehaviour
 
     private void Connect(Collision collision)
     {
+        if (!HasStateAuthority) return;
         if (UsesProbe || supportOverride != null) return;
         if (!IsSupporting(collision)) return;
 
-        // 매 스텝 갱신함. Exit 신호가 누락되어도 lingerTime 뒤에 풀림.
         var solver = collision.transform.GetComponentInParent<CenterOfMassSolver>();
         if (solver != null)
         {
@@ -352,32 +353,25 @@ public class WeightSource : MonoBehaviour
         int count = collision.contactCount;
         for (int i = 0; i < count; i++)
         {
-            // 법선은 상대 쪽에서 이쪽을 향함. 아래에서 받치고 있으면 Y가 양수
             if (collision.GetContact(i).normal.y >= minSupportNormalY) return true;
         }
         return false;
     }
 
-    // ---- 연결 관리 ----
-
-    /// <summary>
-    /// 판과의 직접 연결을 기록함.
-    /// persistent는 Exit가 올 때까지 유지(충돌 방식), 아니면 매 스텝 갱신해야 유지(검사 방식).
-    /// </summary>
     private void SetPlatform(CenterOfMassSolver solver, bool persistent)
     {
+        float now = SimTime;
         if (DirectPlatform != solver)
         {
             DirectPlatform = solver;
-            platformExpiry = persistent ? -1f : Time.time + lingerTime;
+            platformExpiry = persistent ? -1f : now + lingerTime;
             return;
         }
 
         if (persistent) platformExpiry = -1f;
-        else if (platformExpiry >= 0f) platformExpiry = Time.time + lingerTime;
+        else if (platformExpiry >= 0f) platformExpiry = now + lingerTime;
     }
 
-    /// <summary>양방향으로 연결함. 한쪽만 기록하면 탐색에서 누락됨.</summary>
     private void Link(WeightSource other, bool persistent)
     {
         Touch(other, persistent);
@@ -392,15 +386,14 @@ public class WeightSource : MonoBehaviour
             return;
         }
 
-        // 이미 충돌 방식으로 고정된 연결은 덮어쓰지 않음
         if (neighborExpiry.TryGetValue(other, out float current) && current < 0f) return;
-        neighborExpiry[other] = Time.time + lingerTime;
+        neighborExpiry[other] = SimTime + lingerTime;
     }
 
     private void BeginExpire(WeightSource other)
     {
         if (neighborExpiry.TryGetValue(other, out float current) && current < 0f)
-            neighborExpiry[other] = Time.time + lingerTime;
+            neighborExpiry[other] = SimTime + lingerTime;
     }
 
 #if UNITY_EDITOR

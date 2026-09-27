@@ -1,12 +1,17 @@
+using Fusion;
 using UnityEngine;
 
 /// <summary>
 /// 무게중심 오프셋을 판의 기울기로 바꾸고, 동시에 구체 위치를 따라감.
-/// 판은 Kinematic Rigidbody여야 함.
+/// COM→기울기는 Host SA만 계산하고 NetTilt로 복제한다.
+/// 구체 추종(위치/회전 적용)은 모든 피어에서 수행 — 판에 NetworkTransform을 두지 않는다.
+/// 판은 Kinematic Rigidbody여야 함. 구체 pose는 Wheel 쪽 NetworkTransform.
 /// </summary>
+[DefaultExecutionOrder(-50)]
+[RequireComponent(typeof(NetworkObject))]
 [RequireComponent(typeof(Rigidbody))]
 [RequireComponent(typeof(CenterOfMassSolver))]
-public class PlatformTilt : MonoBehaviour
+public class PlatformTilt : NetworkBehaviour
 {
 
     [System.Serializable]
@@ -89,6 +94,9 @@ public class PlatformTilt : MonoBehaviour
     private Quaternion previousRotation = Quaternion.identity;
     private Vector3 angularVelocity;
 
+    /// <summary>Host가 계산한 기울기. 클라는 이 값으로 판을 붙인다.</summary>
+    [Networked] private Quaternion NetTilt { get; set; }
+
     /// <summary>
     /// 시각 모델에만 축과 위치 보정을 적용함.
     /// 기울기 계산은 currentTilt를 기준으로 하므로 이 보정에 영향받지 않음.
@@ -106,7 +114,7 @@ public class PlatformTilt : MonoBehaviour
         modelRoot.localRotation = Quaternion.Euler(modelRotationOffset);
         modelRoot.localPosition = ModelLocalOffset;
 
-        SyncColliders();
+        //SyncColliders();
     }
 
     /// <summary>
@@ -147,6 +155,28 @@ public class PlatformTilt : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// WheelCarrier/WheelRider 공용: 점이 판 캐리 볼륨 안인지.
+    /// 트리거 콜라이더 높이와 무관하게 점프·홀드 높이에서도 실린 것으로 본다.
+    /// </summary>
+    public bool ContainsCarryPoint(
+        Vector3 worldPosition,
+        float radiusScale,
+        float heightAbove,
+        float heightBelow)
+    {
+        if (body == null)
+            body = GetComponent<Rigidbody>();
+
+        Vector3 deck = body != null ? body.position : transform.position;
+        float dy = worldPosition.y - deck.y;
+        if (dy < -heightBelow || dy > heightAbove)
+            return false;
+
+        Vector3 flat = worldPosition - deck;
+        flat.y = 0f;
+        return flat.magnitude <= PlatformRadius * radiusScale;
+    }
 
     /// <summary>판의 각속도(rad/s). Rider가 표면 속도를 계산할 때 사용함.</summary>
     public Vector3 AngularVelocity => angularVelocity;
@@ -281,6 +311,14 @@ public class PlatformTilt : MonoBehaviour
         previousRotation = currentTilt;
     }
 
+    public override void Spawned()
+    {
+        if (Object.HasStateAuthority)
+            NetTilt = currentTilt;
+        else
+            currentTilt = NetTilt;
+    }
+
     /// <summary>
     /// 판의 솔리드 콜라이더가 구체를 밀어내지 않도록 충돌을 끔.
     /// </summary>
@@ -300,39 +338,66 @@ public class PlatformTilt : MonoBehaviour
         }
     }
 
-    private void FixedUpdate()
+    public override void FixedUpdateNetwork()
+    {
+        if (Object.HasStateAuthority)
+        {
+            SimulateTilt(Runner.DeltaTime);
+            NetTilt = currentTilt;
+        }
+        else
+        {
+            currentTilt = NetTilt;
+        }
+
+        // 물리/콜라이더용: 모든 피어가 구체에 판을 붙임 (판 NT 없음)
+        ApplyPose(currentTilt);
+    }
+
+    public override void Render()
+    {
+        if (sphere == null) return;
+
+        // 구체 NetworkTransform 보간에 맞춰 매시도 매 프레임 붙임
+        Quaternion tilt = Object.HasStateAuthority ? currentTilt : NetTilt;
+        Vector3 pos = sphere.position + tilt * Vector3.up * HeightOffset;
+        transform.SetPositionAndRotation(pos, tilt);
+    }
+
+    /// <summary>Host SA: COM 기반 기울기만 갱신.</summary>
+    private void SimulateTilt(float dt)
     {
         Quaternion target = CalculateTargetTilt();
 
         float t = config.tiltResponsiveness <= 0f
             ? 1f
-            : 1f - Mathf.Exp(-config.tiltResponsiveness * Time.fixedDeltaTime);
+            : 1f - Mathf.Exp(-config.tiltResponsiveness * dt);
 
         Quaternion previous = currentTilt;
         currentTilt = Quaternion.Slerp(currentTilt, target, t);
 
-        // 회전 속도에 상한을 둠.
-        // 판 기울기 급변에 따른 물체 발사 방지.
         if (config.maxTiltAngularSpeed > 0f)
         {
             currentTilt = Quaternion.RotateTowards(
-                previous, currentTilt, config.maxTiltAngularSpeed * Time.fixedDeltaTime);
+                previous, currentTilt, config.maxTiltAngularSpeed * dt);
         }
 
-        // Rider가 표면 속도를 계산할 수 있도록 각속도를 기록함.
         Quaternion delta = currentTilt * Quaternion.Inverse(previousRotation);
         delta.ToAngleAxis(out float degrees, out Vector3 axis);
         if (degrees > 180f) degrees -= 360f;
-        angularVelocity = float.IsNaN(axis.x) || Time.fixedDeltaTime <= 0f
+        angularVelocity = float.IsNaN(axis.x) || dt <= 0f
             ? Vector3.zero
-            : axis * (degrees * Mathf.Deg2Rad / Time.fixedDeltaTime);
+            : axis * (degrees * Mathf.Deg2Rad / dt);
         previousRotation = currentTilt;
+    }
 
-        body.MoveRotation(currentTilt);
+    private void ApplyPose(Quaternion tilt)
+    {
+        body.MoveRotation(tilt);
 
         if (sphere == null) return;
 
-        body.MovePosition(sphere.position + currentTilt * Vector3.up * HeightOffset);
+        body.MovePosition(sphere.position + tilt * Vector3.up * HeightOffset);
     }
 
     private Quaternion CalculateTargetTilt()
@@ -343,14 +408,11 @@ public class PlatformTilt : MonoBehaviour
         float radius = Mathf.Max(0.01f, EffectiveOffsetRadius);
         float magnitude = Mathf.Clamp01(offset.magnitude / radius);
 
-        // 응답 곡선: 중앙 근처는 둔감하게, 가장자리로 갈수록 급격하게
         magnitude = config.tiltResponseCurve.Evaluate(magnitude);
 
         Vector3 direction = offset.normalized;
         float angle = magnitude * config.maxTiltAngle;
 
-        // 무게가 쏠린 쪽이 내려가도록 축을 잡음
-        // Unity의 AngleAxis는 왼손 법칙이므로 Cross(up, direction) 순서여야 함.
         Vector3 axis = Vector3.Cross(Vector3.up, direction);
         if (axis.sqrMagnitude < 1e-6f) return Quaternion.identity;
 
@@ -370,7 +432,6 @@ public class PlatformTilt : MonoBehaviour
         cachedPlatformRadius = -1f;
         ApplyModelRotationOffset();
 
-        // 에디터에서 값을 만지면 즉시 배치가 반영되게 함.
         if (!Application.isPlaying && sphere != null)
         {
             transform.position = sphere.position + Vector3.up * HeightOffset;

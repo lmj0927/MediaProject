@@ -113,9 +113,7 @@ public class TestPrefabSpawner : MonoBehaviour
         var rider = spawned.GetComponent<WheelRider>();
         if (rider != null)
         {
-            // 트리거 감지는 다음 물리 스텝에야 오므로 직접 연결한 뒤 속도를 물려줌
-            rider.AttachTo(platform);
-            rider.InheritFrameVelocity(Vector3.zero);
+            rider.BindToPlatformAtSpawn(platform);
         }
         else
         {

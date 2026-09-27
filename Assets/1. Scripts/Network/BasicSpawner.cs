@@ -4,7 +4,9 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 using Fusion;
+using Fusion.Addons.Physics;
 using Fusion.Sockets;
+using UnityEngine.UIElements;
 
 /// <summary>
 /// Fusion Host/Client 세션 시작, 플레이어 스폰, 로컬 입력 수집.
@@ -13,6 +15,7 @@ public class BasicSpawner : MonoBehaviour, INetworkRunnerCallbacks
 {
     [SerializeField] private NetworkPrefabRef _playerPrefab;
     [SerializeField] private InputActionAsset _inputActions;
+    [SerializeField] private Transform _spawnPoint;
 
     private NetworkRunner _runner;
     private InputAction _moveAction;
@@ -107,7 +110,7 @@ public class BasicSpawner : MonoBehaviour, INetworkRunnerCallbacks
     {
         if (runner.IsServer)
         {
-            Vector3 spawnPosition = new Vector3(0, 1, (player.RawEncoded % runner.Config.Simulation.PlayerCount) * 3);
+            Vector3 spawnPosition = _spawnPoint.position;
             NetworkObject networkPlayerObject = runner.Spawn(_playerPrefab, spawnPosition, Quaternion.identity, player);
             _spawnedCharacters.Add(player, networkPlayerObject);
         }

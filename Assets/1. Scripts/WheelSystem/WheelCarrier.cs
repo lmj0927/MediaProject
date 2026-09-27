@@ -14,7 +14,7 @@ using UnityEngine;
 ///   3. EndTick으로 최종 위치를 기록
 ///
 /// 주의: 지난 틱의 기준점을 들고 있으므로 네트워크 재시뮬레이션에 안전하지 않음.
-/// 호스트에서는 문제없지만, 클라이언트 예측을 켤 경우 기준점을 네트워크 변수로 옮겨야 함.
+/// Host State Authority에서만 GetCarryDelta/EndTick을 적용한다.
 /// </summary>
 [RequireComponent(typeof(WeightSource))]
 [DisallowMultipleComponent]

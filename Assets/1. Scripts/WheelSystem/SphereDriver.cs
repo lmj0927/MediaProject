@@ -1,11 +1,15 @@
+using Fusion;
 using UnityEngine;
 
 /// <summary>
 /// 판의 기울기를 읽어 구체에 보정 토크를 넣음.
+/// Host State Authority의 FixedUpdateNetwork에서만 시뮬한다.
 /// 구체는 non-kinematic Rigidbody여야 충돌, 경사, 넉백이 물리로 처리됨.
 /// </summary>
+[DefaultExecutionOrder(100)]
+[RequireComponent(typeof(NetworkObject))]
 [RequireComponent(typeof(Rigidbody))]
-public class SphereDriver : MonoBehaviour
+public class SphereDriver : NetworkBehaviour
 {
     [Header("References")]
     [SerializeField] private PlatformTilt platform;
@@ -48,7 +52,16 @@ public class SphereDriver : MonoBehaviour
         body.maxAngularVelocity = config.maxAngularSpeed * 1.5f;
     }
 
-    private void FixedUpdate()
+    public override void FixedUpdateNetwork()
+    {
+        if (!Object.HasStateAuthority)
+            return;
+
+        Simulate();
+    }
+
+    /// <summary>한 틱분 토크. Host SA에서만 호출.</summary>
+    public void Simulate()
     {
         IsGrounded = CheckGrounded();
 
@@ -63,7 +76,6 @@ public class SphereDriver : MonoBehaviour
             return;
         }
 
-        // 구르는 방향에 수직인 수평 축이 회전축
         Vector3 rollAxis = Vector3.Cross(downhill, Vector3.up).normalized;
         Vector3 targetAngular = rollAxis * (tilt * config.maxAngularSpeed);
 
@@ -92,10 +104,12 @@ public class SphereDriver : MonoBehaviour
             QueryTriggerInteraction.Ignore);
     }
 
-    /// <summary>폭발, 범프, 부스터 같은 외부 충격용.</summary>
+    /// <summary>폭발, 범프, 부스터 같은 외부 충격용. Host SA에서만.</summary>
     public void AddImpulse(Vector3 force)
     {
+        if (Object != null && Object.IsValid && !Object.HasStateAuthority)
+            return;
+
         body.AddForce(force, ForceMode.Impulse);
     }
 }
-
