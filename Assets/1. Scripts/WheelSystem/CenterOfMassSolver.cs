@@ -1,18 +1,14 @@
 using System.Collections.Generic;
+using Fusion;
 using UnityEngine;
 
 /// <summary>
 /// 판에 하중을 싣고 있는 대상을 모아 무게중심을 구하고, 축(구체 중심) 기준 수평 오프셋을 냄.
-/// 판에 연결함.
-///
-/// 판정은 트리거 체적이 아니라 접촉 연결을 따름.
-/// 체적으로 재면 공중에 떠 있는 대상까지 무게로 잡힘.
-/// 대상 쪽에는 WeightSource가 붙어 있어야 함.
-///
-/// 출력은 월드 공간 XZ 벡터.
-/// 판의 로컬 공간에서 재면 기울어짐이 좌표계를 돌려 다시 오프셋을 바꾸는 되먹임이 생김.
+/// Host State Authority의 FixedUpdateNetwork에서만 시뮬한다.
 /// </summary>
-public class CenterOfMassSolver : MonoBehaviour
+[DefaultExecutionOrder(-100)]
+[RequireComponent(typeof(NetworkObject))]
+public class CenterOfMassSolver : NetworkBehaviour
 {
     [Header("References")]
     [Tooltip("오프셋을 재는 기준점. 보통 구체(축)의 Transform.")]
@@ -94,7 +90,17 @@ public class CenterOfMassSolver : MonoBehaviour
             Debug.LogWarning($"{name}: pivot이 비어 있습니다. 구체의 Transform을 지정하세요.", this);
     }
 
-    private void FixedUpdate()
+    public override void FixedUpdateNetwork()
+    {
+        if (!Object.HasStateAuthority)
+            return;
+
+        WeightSource.TickAllSupport();
+        Simulate(Runner.DeltaTime);
+    }
+
+    /// <summary>한 틱분 COM 갱신. Host SA에서만 호출.</summary>
+    public void Simulate(float dt)
     {
         CollectOccupants();
 
@@ -109,22 +115,16 @@ public class CenterOfMassSolver : MonoBehaviour
         {
             smoothedOffset = Vector3.SmoothDamp(
                 smoothedOffset, target, ref smoothVelocity, smoothTime,
-                Mathf.Infinity, Time.fixedDeltaTime);
+                Mathf.Infinity, dt);
         }
     }
 
-    /// <summary>
-    /// 판에 직접 닿은 대상에서 시작해 접촉 연결을 따라가며 무게 대상을 모음.
-    /// 판 위 상자에 올라선 플레이어처럼 경유해서 하중을 전달하는 경우까지 포함함.
-    /// 매 스텝 새로 모으므로 별도의 정리 과정이 필요 없음.
-    /// </summary>
     private void CollectOccupants()
     {
         occupants.Clear();
         visited.Clear();
         frontier.Clear();
 
-        // 1단계: 판에 직접 닿은 대상
         var all = WeightSource.All;
         for (int i = 0; i < all.Count; i++)
         {
@@ -133,7 +133,6 @@ public class CenterOfMassSolver : MonoBehaviour
             if (visited.Add(source)) frontier.Enqueue(source);
         }
 
-        // 2단계부터: 접촉으로 이어진 대상을 단계별로 확장
         int depth = 0;
         while (frontier.Count > 0 && depth < maxContactDepth)
         {
@@ -143,7 +142,6 @@ public class CenterOfMassSolver : MonoBehaviour
                 var source = frontier.Dequeue();
                 if (source == null) continue;
 
-                // 범위 밖이면 무게로 치지 않고, 이 대상을 거친 연결도 끊음
                 if (!IsInRange(source)) continue;
 
                 occupants.Add(source);
@@ -159,7 +157,6 @@ public class CenterOfMassSolver : MonoBehaviour
         }
     }
 
-    /// <summary>대상이 판 근처에 있는지 확인함. 연결이 남는 예외 상황의 안전장치.</summary>
     private bool IsInRange(WeightSource source)
     {
         if (occupantRangeScale <= 0f || platform == null) return true;
@@ -193,12 +190,11 @@ public class CenterOfMassSolver : MonoBehaviour
             if (w <= 0f) continue;
 
             Vector3 offset = source.WorldPosition - pivotPosition;
-            offset.y = 0f;   // 수평 성분만 기울기에 기여함.
+            offset.y = 0f;
 
             float influence = w;
             if (distanceSquaredInfluence)
             {
-                // 판 반경 대비 거리 비율. 반경 밖은 반경으로 취급함.
                 float ratio = Mathf.Min(offset.magnitude / radius, 1f);
                 influence = w * (ratio * ratio + centerInfluence);
             }

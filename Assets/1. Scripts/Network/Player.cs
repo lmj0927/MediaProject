@@ -3,7 +3,13 @@ using UnityEngine;
 
 /// <summary>
 /// Host 권한 플레이어: 이동/점프/Stamp, 잡기·들기·던지기, 애니 파라미터 구동.
+/// 이동·휠 carry 시뮬은 State Authority(Host)만 수행한다.
+/// Client(Input Authority)는 입력을 보내고 Host 포즈를 보간 — 공유 휠 위 예측 불일치로 인한 러버밴딩 방지.
+/// Grounded는 Host가 GroundedNet으로 복제해 애니/입력 판정에 사용.
+/// 판 위일 때 Host가 PlatformLocal을 복제하고, LateUpdate에서 판 Render 포즈에 붙여 Client 시각 떨림을 줄인다.
+/// 든 대상은 홀더 LateUpdate에서 HoldPoint에 붙이고, held 중에는 NetPosition/NCC 보간을 덮어쓴다.
 /// </summary>
+[DefaultExecutionOrder(50)]
 public class Player : NetworkBehaviour, IHoldable
 {
     // Animator 파라미터 해시 (문자열 조회 비용 절약)
@@ -71,6 +77,18 @@ public class Player : NetworkBehaviour, IHoldable
     /// <summary>공중 Stamp 중(착지까지). Host 시뮬 상태.</summary>
     [Networked] private NetworkBool IsStamping { get; set; }
 
+    /// <summary>Host 시뮬 착지 여부. Client 애니/점프·Stamp 판정에 사용.</summary>
+    [Networked] private NetworkBool GroundedNet { get; set; }
+
+    /// <summary>판 위에 실려 있는지 (시각 보정용).</summary>
+    [Networked] private NetworkBool RidingPlatform { get; set; }
+
+    /// <summary>타고 있는 판 NetworkObject.</summary>
+    [Networked] private NetworkId PlatformObjectId { get; set; }
+
+    /// <summary>판 Rigidbody 기준 로컬 위치 (Host 시뮬).</summary>
+    [Networked] private Vector3 PlatformLocalPosition { get; set; }
+
     /// <summary>현재 들고 있는 오브젝트. 유효하지 않으면 비어 있음.</summary>
     [Networked] private NetworkId HeldObjectId { get; set; }
 
@@ -101,11 +119,16 @@ public class Player : NetworkBehaviour, IHoldable
         _shownJumpCount = JumpCount;
         _shownThrowCount = ThrowCount;
         _shownStampCount = StampCount;
-        _wasGrounded = _cc != null && _cc.Grounded;
+        if (Object.HasStateAuthority && _cc != null)
+            GroundedNet = _cc.Grounded;
+        _wasGrounded = GroundedNet;
         _wasHolding = IsHolding;
         SyncHeldControllerAndCollision();
         UpdateNameTagVisibility();
     }
+
+    /// <summary>애니/입력용 착지. 복제된 GroundedNet.</summary>
+    private bool IsGroundedForGameplay => GroundedNet;
 
     /// <summary>
     /// 로컬에서 이 아바타의 Input Authority일 때만 이름표를 켠다.
@@ -128,39 +151,51 @@ public class Player : NetworkBehaviour, IHoldable
     {
         SyncHeldControllerAndCollision();
 
-        // 잡혀 있으면 모든 피어에서 입력/Move 스킵 (비활성 CC에 Move 호출 방지)
-        // 위치는 홀더의 UpdateCarriedObject → SnapToHoldPoint가 맞춤
-        if (IsHeldNet)
+        // Client(IA only): 이동 예측하지 않음. Host 시뮬 포즈를 NCC가 보간.
+        // 공유 휠 carry/판 포즈가 피어마다 달라 예측이 어긋나면 앞으로 갔다 뒤로 튕김.
+        if (!Object.HasStateAuthority)
             return;
+
+        // 잡혀 있으면 입력/Move 스킵 (비활성 CC에 Move 호출 방지)
+        if (IsHeldNet)
+        {
+            SyncGroundedNet();
+            ClearPlatformRideState();
+            return;
+        }
 
         if (!GetInput(out NetworkInputData data))
         {
-            if (Object.HasStateAuthority)
-                UpdateCarriedObject();
+            ApplyWheelCarry();
+            if (_carrier != null)
+                _carrier.EndTick(transform.position);
+
+            if (_weightSource != null)
+                _weightSource.SetSimulatedPosition(transform.position);
+            UpdateCarriedObject();
+            SyncGroundedNet();
+            SyncPlatformRideState();
             return;
         }
 
         var pressed = data.buttons.GetPressed(_previousButtons);
         _previousButtons = data.buttons;
 
-        // 잡기/던지기는 Host(State Authority)만 확정
-        if (Object.HasStateAuthority)
-        {
-            if (pressed.IsSet(PlayerInputButton.Hold))
-                HandleHoldPressed();
+        if (pressed.IsSet(PlayerInputButton.Hold))
+            HandleHoldPressed();
 
-            if (pressed.IsSet(PlayerInputButton.Throw))
-                HandleThrowPressed();
-        }
+        if (pressed.IsSet(PlayerInputButton.Throw))
+            HandleThrowPressed();
 
-        // Stamp: 공중 + 미홀드 + 미Stamp 상태에서 엣지 한 번 → 착지까지 유지
         if (pressed.IsSet(PlayerInputButton.Stamp) &&
             !IsStamping &&
             !IsHolding &&
-            !_cc.Grounded)
+            !IsGroundedForGameplay)
         {
             BeginStamp();
         }
+
+        ApplyWheelCarry();
 
         if (IsStamping)
         {
@@ -175,7 +210,7 @@ public class Player : NetworkBehaviour, IHoldable
             var direction = data.direction;
             direction.y = 0f;
 
-            if (pressed.IsSet(PlayerInputButton.Jump) && _cc.Grounded)
+            if (pressed.IsSet(PlayerInputButton.Jump) && IsGroundedForGameplay)
             {
                 _cc.Jump();
                 JumpCount++;
@@ -183,24 +218,59 @@ public class Player : NetworkBehaviour, IHoldable
 
             _cc.Move(direction);
         }
-        // 휠에 실려 가는 이동을 자체 이동보다 먼저 적용함.
-        // NetworkCharacterController는 Move 전후 위치 차이로 속도를 계산하므로,
-        // 먼저 끝내 두면 애니메이터 Speed에 휠 이동이 섞이지 않음.
-        ApplyWheelCarry();
 
-        _cc.Move(direction);
-
-        // 이번 틱의 최종 위치를 기록함. 다음 틱은 이 지점이 판과 함께 어디로 갔는지를 기준으로 옮김.
         if (_carrier != null)
             _carrier.EndTick(transform.position);
 
-        // 틱 안의 실제 위치를 무게 계산에 알려줌.
-        // 틱 밖에서는 transform이 화면용 보간 위치라 무게중심이 흔들림.
         if (_weightSource != null)
             _weightSource.SetSimulatedPosition(transform.position);
 
-        if (Object.HasStateAuthority)
-            UpdateCarriedObject();
+        UpdateCarriedObject();
+        SyncGroundedNet();
+        SyncPlatformRideState();
+    }
+
+    /// <summary>Host가 시뮬 착지 결과를 복제.</summary>
+    private void SyncGroundedNet()
+    {
+        if (_cc == null)
+            return;
+
+        GroundedNet = _cc.Grounded;
+    }
+
+    /// <summary>Host가 판 기준 로컬 좌표를 복제 (Client LateUpdate 시각 보정).</summary>
+    private void SyncPlatformRideState()
+    {
+        if (_carrier == null)
+        {
+            ClearPlatformRideState();
+            return;
+        }
+
+        var platform = _carrier.CurrentPlatform;
+        if (platform == null || platform.Object == null || !platform.Object.IsValid)
+        {
+            ClearPlatformRideState();
+            return;
+        }
+
+        var body = platform.GetComponent<Rigidbody>();
+        if (body == null)
+        {
+            ClearPlatformRideState();
+            return;
+        }
+
+        RidingPlatform = true;
+        PlatformObjectId = platform.Object.Id;
+        PlatformLocalPosition = Quaternion.Inverse(body.rotation) * (transform.position - body.position);
+    }
+
+    private void ClearPlatformRideState()
+    {
+        RidingPlatform = false;
+        PlatformObjectId = default;
     }
 
     /// <summary>Stamp 진입: 수평 속도 제거 + 아래 속도 부여 + 애니 카운트.</summary>
@@ -228,6 +298,84 @@ public class Player : NetworkBehaviour, IHoldable
     {
         SyncHeldControllerAndCollision();
         UpdateAnimator();
+    }
+
+    /// <summary>
+    /// 판 보정 → 든 대상 손 부착을 한 프레임에 처리.
+    /// 잡혀 있으면 HoldPoint만 따라가 NCC 보간을 덮어쓴다 (A+B).
+    /// </summary>
+    private void LateUpdate()
+    {
+        if (Object == null || !Object.IsValid)
+            return;
+
+        if (IsHeldNet)
+        {
+            SnapVisualToHolderHoldPoint();
+            SnapHeldObjectVisual();
+            return;
+        }
+
+        ApplyPlatformRenderCorrection();
+        SnapHeldObjectVisual();
+    }
+
+    private void ApplyPlatformRenderCorrection()
+    {
+        if (!RidingPlatform || !PlatformObjectId.IsValid)
+            return;
+
+        if (Runner == null || !Runner.TryFindObject(PlatformObjectId, out var platformObject))
+            return;
+
+        var platform = platformObject.transform;
+        transform.position = platform.position + platform.rotation * PlatformLocalPosition;
+    }
+
+    /// <summary>잡혀 있을 때 홀더 HoldPoint로 시각 스냅 (NCC Render 보간 덮어쓰기).</summary>
+    private void SnapVisualToHolderHoldPoint()
+    {
+        if (!HeldById.IsValid || Runner == null)
+            return;
+
+        if (!Runner.TryFindObject(HeldById, out var holderObject))
+            return;
+
+        var holder = holderObject.GetComponent<Player>();
+        if (holder == null || holder.HoldPoint == null)
+            return;
+
+        SnapVisualToHoldPoint(holder.HoldPoint);
+    }
+
+    /// <summary>시각 전용. 시뮬 Teleport와 분리.</summary>
+    public void SnapVisualToHoldPoint(Transform holdPoint)
+    {
+        if (holdPoint == null)
+            return;
+
+        transform.SetPositionAndRotation(holdPoint.position, holdPoint.rotation);
+    }
+
+    /// <summary>홀더가 판 보정 직후 든 대상을 손에 붙임. 체인(P→P→Prop) 재귀.</summary>
+    public void SnapHeldObjectVisual()
+    {
+        if (!HeldObjectId.IsValid || _holdPoint == null || Runner == null)
+            return;
+
+        if (!Runner.TryFindObject(HeldObjectId, out var heldObject))
+            return;
+
+        var heldPlayer = heldObject.GetComponent<Player>();
+        if (heldPlayer != null)
+        {
+            heldPlayer.SnapVisualToHoldPoint(_holdPoint);
+            heldPlayer.SnapHeldObjectVisual();
+            return;
+        }
+
+        var heldProp = heldObject.GetComponent<HoldableProp>();
+        heldProp?.SnapVisualToHoldPoint(_holdPoint);
     }
 
     /// <summary>
@@ -399,7 +547,7 @@ public class Player : NetworkBehaviour, IHoldable
             return;
         }
 
-        if (!_cc.Grounded)
+        if (!IsGroundedForGameplay)
             return;
 
         var target = FindBestHoldable();
@@ -513,7 +661,7 @@ public class Player : NetworkBehaviour, IHoldable
         var velocity = _cc.Velocity;
         velocity.y = 0f;
         _animator.SetFloat(SpeedHash, velocity.magnitude);
-        _animator.SetBool(GroundedHash, _cc.Grounded);
+        _animator.SetBool(GroundedHash, GroundedNet);
 
         var throwFired = ThrowCount != _shownThrowCount;
         if (throwFired)
@@ -540,7 +688,7 @@ public class Player : NetworkBehaviour, IHoldable
             _animator.ResetTrigger(JumpHash);
             _animator.SetTrigger(JumpHash);
         }
-        else if (_cc.Grounded && !_wasGrounded)
+        else if (GroundedNet && !_wasGrounded)
         {
             _animator.ResetTrigger(JumpHash);
         }
@@ -552,12 +700,12 @@ public class Player : NetworkBehaviour, IHoldable
             _animator.ResetTrigger(StampHash);
             _animator.SetTrigger(StampHash);
         }
-        else if (_cc.Grounded && !_wasGrounded)
+        else if (GroundedNet && !_wasGrounded)
         {
             _animator.ResetTrigger(StampHash);
         }
 
-        _wasGrounded = _cc.Grounded;
+        _wasGrounded = GroundedNet;
         _wasHolding = IsHolding;
     }
 

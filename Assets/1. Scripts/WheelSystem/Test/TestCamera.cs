@@ -7,13 +7,15 @@ using UnityEngine.InputSystem;
 /// 테스트용 카메라. 로컬 플레이어와 휠을 번갈아 따라감.
 /// 로컬 플레이어를 찾기 전에는 휠을 따라감.
 ///
+/// Player LateUpdate(판 로컬 스냅)보다 늦게 돌아야 Client 카메라 떨림이 줄어듦.
+/// 플레이어 모드는 네트워크 보간 타겟을 SmoothDamp로 한 번 더 필터하지 않음.
+///
 /// 조작
 ///   토글 키(기본 Tab): 플레이어 / 휠 전환
 ///   마우스 우클릭 드래그: 궤도 회전 (휠 모드 전용)
 ///   마우스 휠: 거리 조절
-///
-/// 플레이어 모드는 방향이 고정됨. 이동 입력이 월드 기준이라 카메라가 돌면 조작 방향이 어긋남.
 /// </summary>
+[DefaultExecutionOrder(1000)]
 public class TestCamera : MonoBehaviour
 {
     public enum FollowMode { LocalPlayer, Wheel }
@@ -46,7 +48,7 @@ public class TestCamera : MonoBehaviour
     [Tooltip("대상보다 이 높이를 바라봄.")]
     [SerializeField] private float lookHeight = 1.2f;
 
-    [Tooltip("따라가는 부드러움. 0이면 즉시 따라감.")]
+    [Tooltip("휠 모드에서만 쓰는 따라가기 부드러움. 0이면 즉시. 플레이어 모드는 항상 즉시 추종.")]
     [SerializeField] private float followSmoothTime = 0.12f;
 
     [Header("Control")]
@@ -75,7 +77,6 @@ public class TestCamera : MonoBehaviour
     public Transform CurrentTarget =>
         mode == FollowMode.LocalPlayer && localPlayer != null ? localPlayer : wheelTarget;
 
-    // 로컬 플레이어를 못 찾아 휠을 따라가는 중에도 휠 모드로 취급함
     private bool IsWheelView => CurrentTarget == wheelTarget;
 
     private void Awake()
@@ -99,9 +100,18 @@ public class TestCamera : MonoBehaviour
         Vector3 focus = target.position + Vector3.up * lookHeight;
         Vector3 desired = focus + Quaternion.Euler(pitch, yaw, 0f) * (Vector3.back * distance);
 
-        transform.position = followSmoothTime > 0f
-            ? Vector3.SmoothDamp(transform.position, desired, ref followVelocity, followSmoothTime)
-            : desired;
+        // 플레이어: NCC/판 LateUpdate 스냅 직후 좌표를 즉시 사용 (이중 SmoothDamp 떨림 방지)
+        // 휠: 기존처럼 부드럽게 따라가도 됨
+        if (!IsWheelView || followSmoothTime <= 0f)
+        {
+            followVelocity = Vector3.zero;
+            transform.position = desired;
+        }
+        else
+        {
+            transform.position = Vector3.SmoothDamp(
+                transform.position, desired, ref followVelocity, followSmoothTime);
+        }
 
         transform.LookAt(focus);
         Yaw = yaw;
@@ -109,7 +119,6 @@ public class TestCamera : MonoBehaviour
 
     /// <summary>
     /// 입력 권한을 가진 플레이어를 찾음. 호스트에서는 호스트 본인의 캐릭터.
-    /// 세션 시작 전이나 재접속 중에는 없으므로 주기적으로 다시 찾음.
     /// </summary>
     private void FindLocalPlayerIfNeeded()
     {
@@ -139,7 +148,6 @@ public class TestCamera : MonoBehaviour
 
         if (mouse == null) return;
 
-        // 궤도 회전은 휠 모드에서만 허용함
         if (IsWheelView && mouse.rightButton.isPressed)
         {
             Vector2 delta = mouse.delta.ReadValue();
@@ -151,7 +159,6 @@ public class TestCamera : MonoBehaviour
 #else
         if (Input.GetKeyDown(toggleKey)) ToggleMode();
 
-        // 궤도 회전은 휠 모드에서만 허용함
         if (IsWheelView && Input.GetMouseButton(1))
         {
             Orbit(Input.GetAxis("Mouse X") * orbitSensitivity * 10f,
