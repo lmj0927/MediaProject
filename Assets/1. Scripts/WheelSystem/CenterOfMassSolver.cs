@@ -21,16 +21,6 @@ public class CenterOfMassSolver : NetworkBehaviour
     [Tooltip("접촉 연쇄를 따라갈 최대 단계. 사람 위에 사람이 올라탄 경우를 몇 단계까지 인정할지.")]
     [Range(1, 16)][SerializeField] private int maxContactDepth = 6;
 
-    [Header("Weighting")]
-    [Tooltip("가운데 무게가 다른 무게의 영향력을 희석하는 정도.\n" +
-                "1: 무게중심 평균. 가운데 무게가 강하게 희석함.\n" +
-                "0: 토크 합. 가운데 무게는 영향 없음.")]
-    [Range(0f, 1f)][SerializeField] private float dilution = 0.5f;
-
-    [Tooltip("기준 무게. 이 무게 하나가 판 가장자리에 있으면 최대 기울기에 도달함.\n" +
-                "보통 플레이어 한 명의 무게.")]
-    [SerializeField] private float referenceWeight = 1f;
-
     [Header("Influence")]
     [Tooltip("활성화시 중심에서 먼 대상일수록 영향력이 커짐(거리의 제곱에 비례).\n" +
                 "비활성화시 단순 무게 평균.")]
