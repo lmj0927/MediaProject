@@ -3,12 +3,12 @@ using Fusion;
 using UnityEngine;
 
 /// <summary>
-/// Rigidbody용 휠 캐리. WheelCarrier와 같은 delta 방식:
-///   1) 지난 틱 판 위 지점이 지금 어디로 갔는지 → delta
-///   2) MovePosition(pos + delta)
-///   3) EndTick으로 앵커 갱신
-/// 착지: 판 로컬(회전 포함). 공중: 판 수평 이동만 (Y는 Rigidbody 중력).
-/// Parent / kinematic 승객 / 절대 스냅 없음. Host SA만 시뮬.
+/// Rigidbody용 휠 캐리. 텔레포트(MovePosition) 없이 속도만 맞춰 PhysX가 판과 같은 스텝에 옮기게 한다.
+///   착지: 현재 판 로컬 위치를 이번 틱 판 목표 포즈로 옮긴 이동량 / dt → 수평 속도 고정 (판에 붙음)
+///   공중(볼륨 안): 판 수평 이동 변화분만 더함 (판 기준 상대 속도 유지, Y는 중력)
+///   던지기: 판 착지 전까지 carry 없음
+/// 동적 RB에 텔레포트+속도를 같이 주면 한 스텝에 두 번 이동해 틱마다 부호가 바뀌는 떨림이 생긴다.
+/// 착지 판정은 틱마다 아래 BoxCast 쿼리. Host SA만 시뮬 (HostPhysicsStepper로 틱당 물리 1회 전제).
 /// </summary>
 [RequireComponent(typeof(Rigidbody))]
 [RequireComponent(typeof(WeightSource))]
@@ -28,30 +28,35 @@ public class WheelRider : MonoBehaviour
     [SerializeField] private float heightBelow = 0.6f;
 
     [Header("Carry")]
-    [Tooltip("착지 중 판 회전까지 따라감. WheelCarrier와 동일.")]
+    [Tooltip("착지 중 판 회전(기울기 변화)까지 따라감. 끄면 판 이동만.")]
     [SerializeField] private bool carryRotationWhenGrounded = true;
-
-    [Tooltip("이 거리 이상 순간 이동이면 앵커 버림 (들기/던지기).")]
-    [SerializeField] private float teleportThreshold = 0.5f;
 
     [Header("Detection")]
     [Range(0f, 1f)]
     [SerializeField] private float groundNormalThreshold = 0.4f;
 
+    [Tooltip("콜라이더 바닥 아래로 이 거리 안에 판 표면이 있으면 착지로 봄.")]
+    [SerializeField] private float groundProbeDistance = 0.08f;
+
+    [SerializeField] private LayerMask groundMask = ~0;
+
     private static readonly List<PlatformTilt> platforms = new();
     private static readonly Dictionary<PlatformTilt, Rigidbody> platformBodies = new();
+    private static readonly RaycastHit[] probeHits = new RaycastHit[8];
     private static float nextRefreshTime;
     private const float RefreshInterval = 1f;
 
     private Rigidbody body;
     private NetworkObject networkObject;
-    private bool contactGrounded;
+    private Collider[] ownColliders;
+    private Collider probeCollider;
 
-    private bool hasAnchor;
-    private PlatformTilt anchorPlatform;
-    private Vector3 anchorLocal;
-    private Vector3 anchorPlatformPosition;
-    private Vector3 lastFinalPosition;
+    /// <summary>직전 틱에 준 판 수평 속도. 공중에서 판 가속분만 더할 때 사용.</summary>
+    private Vector3 lastCarryVelocity;
+    private bool hasCarryVelocity;
+
+    private bool hasRideLocal;
+    private Vector3 rideLocal;
 
     /// <summary>던지기 비행. 착지 전까지 carry 없음.</summary>
     private bool thrownFlight;
@@ -88,6 +93,16 @@ public class WheelRider : MonoBehaviour
         networkObject = GetComponentInParent<NetworkObject>();
         if (body != null)
             body.interpolation = RigidbodyInterpolation.None;
+
+        ownColliders = GetComponentsInChildren<Collider>();
+        foreach (var c in ownColliders)
+        {
+            if (c != null && !c.isTrigger)
+            {
+                probeCollider = c;
+                break;
+            }
+        }
     }
 
     private void FixedUpdate()
@@ -96,27 +111,26 @@ public class WheelRider : MonoBehaviour
             return;
         if (!HasStateAuthority)
             return;
-        Simulate();
+        Simulate(Time.fixedDeltaTime);
     }
 
     public void AttachTo(PlatformTilt target)
     {
         if (body == null) body = GetComponent<Rigidbody>();
         platform = target;
-        hasAnchor = false;
         thrownFlight = false;
+        ClearCarry();
     }
 
     public void NotifyPickedUp()
     {
         thrownFlight = false;
-        hasAnchor = false;
-        contactGrounded = false;
         IsOnPlatform = false;
         CurrentPlatform = null;
+        ClearCarry();
     }
 
-    /// <summary>스폰 직후 판 속도 상속 + 앵커 시작.</summary>
+    /// <summary>스폰 직후 판 속도 상속.</summary>
     public void BindToPlatformAtSpawn(PlatformTilt target)
     {
         if (body == null) body = GetComponent<Rigidbody>();
@@ -124,15 +138,15 @@ public class WheelRider : MonoBehaviour
 
         AttachTo(target);
         CurrentPlatform = target;
-        EndTick(BodyPosition, target);
 
         Vector3 v = target.FrameVelocity;
         v.y = 0f;
         body.linearVelocity = v;
         body.angularVelocity = Vector3.zero;
+        SetCarryVelocity(v);
     }
 
-    /// <summary>놓기. Carrier 공중 경로로 이어짐 (특수 SoftDrop 없음).</summary>
+    /// <summary>놓기. 판 수평 속도를 물려받고 공중 carry로 이어짐.</summary>
     public void SoftRelease()
     {
         if (!HasStateAuthority) return;
@@ -140,15 +154,16 @@ public class WheelRider : MonoBehaviour
         if (body == null || body.isKinematic) return;
 
         thrownFlight = false;
+        ClearCarry();
 
         var plat = FindContainingPlatform(BodyPosition);
         CurrentPlatform = plat;
         if (plat != null)
         {
-            EndTick(BodyPosition, plat);
             Vector3 frame = plat.FrameVelocity;
             frame.y = 0f;
             body.linearVelocity = frame;
+            SetCarryVelocity(frame);
         }
 
         body.angularVelocity = Vector3.zero;
@@ -162,10 +177,9 @@ public class WheelRider : MonoBehaviour
         if (body == null || body.isKinematic) return;
 
         thrownFlight = true;
-        hasAnchor = false;
-        contactGrounded = false;
         IsOnPlatform = false;
         CurrentPlatform = null;
+        ClearCarry();
 
         Vector3 v = worldVelocity;
         var plat = FindContainingPlatform(BodyPosition);
@@ -181,40 +195,41 @@ public class WheelRider : MonoBehaviour
         body.angularVelocity = Vector3.zero;
     }
 
-    public void ResetAnchor() => hasAnchor = false;
+    public void ResetAnchor() => ClearCarry();
 
+    /// <summary>Client 시각 보정용 판 로컬 위치 (틱 시작 시점, NetPosition과 같은 시점).</summary>
     public bool TryGetRideLocal(out NetworkObject platformObject, out Vector3 localPosition)
     {
         platformObject = null;
         localPosition = default;
 
-        if (thrownFlight || !hasAnchor || CurrentPlatform == null)
+        if (thrownFlight || !hasRideLocal || CurrentPlatform == null)
             return false;
         if (CurrentPlatform.Object == null || !CurrentPlatform.Object.IsValid)
             return false;
 
         platformObject = CurrentPlatform.Object;
-        localPosition = anchorLocal;
+        localPosition = rideLocal;
         return true;
     }
 
-    /// <summary>Host SA 한 틱. HoldableProp.FUN에서 호출.</summary>
-    public void Simulate()
+    /// <summary>Host SA 한 틱. HoldableProp.FUN에서 호출 (PlatformTilt FUN 이후, Physics.Simulate 이전).</summary>
+    public void Simulate(float deltaTime)
     {
         if (body == null)
             body = GetComponent<Rigidbody>();
-        if (body == null || body.isKinematic)
+        if (body == null || body.isKinematic || deltaTime <= 0f)
             return;
 
-        IsOnPlatform = contactGrounded;
-        contactGrounded = false;
+        hasRideLocal = false;
+        IsOnPlatform = ProbePlatformGround();
 
         if (thrownFlight)
         {
             if (IsOnPlatform && FindContainingPlatform(BodyPosition) != null)
             {
                 thrownFlight = false;
-                hasAnchor = false;
+                ClearCarry();
             }
             else
             {
@@ -227,9 +242,10 @@ public class WheelRider : MonoBehaviour
         var plat = FindContainingPlatform(position);
         CurrentPlatform = plat;
 
+        // 볼륨 밖: 월드 속도 그대로 (판 속도를 품은 채 떨어져 나감)
         if (plat == null)
         {
-            hasAnchor = false;
+            ClearCarry();
             return;
         }
 
@@ -237,66 +253,107 @@ public class WheelRider : MonoBehaviour
         var platBody = GetBody(plat);
         if (platBody == null)
         {
-            hasAnchor = false;
+            ClearCarry();
             return;
         }
 
-        Vector3 delta = GetCarryDelta(position, plat, platBody, IsOnPlatform);
-        if (delta.sqrMagnitude > 1e-10f)
-            body.MovePosition(position + delta);
+        Vector3 platPosition = platBody.position;
+        Quaternion platRotation = platBody.rotation;
+        plat.GetStepTargetPose(out var nextPosition, out var nextRotation);
 
-        // 착지 중에만 수평 속도를 판에 맞춤. 공중은 Carrier처럼 속도 강제 없음.
+        Vector3 local = Quaternion.Inverse(platRotation) * (position - platPosition);
+        rideLocal = local;
+        hasRideLocal = true;
+
+        Vector3 v = body.linearVelocity;
+
         if (IsOnPlatform)
         {
-            Vector3 pv = plat.PointVelocity(body.position);
-            Vector3 v = body.linearVelocity;
-            v.x = pv.x;
-            v.z = pv.z;
-            body.linearVelocity = v;
+            // 판에 붙음: 이번 스텝 뒤 같은 판 로컬 위치에 오도록 수평 속도 고정
+            Vector3 carried = carryRotationWhenGrounded
+                ? nextPosition + nextRotation * local
+                : position + (nextPosition - platPosition);
+            Vector3 surface = (carried - position) / deltaTime;
+            surface.y = 0f;
+
+            v.x = surface.x;
+            v.z = surface.z;
+            SetCarryVelocity(surface);
+        }
+        else
+        {
+            // 공중: 판 기준 상대 수평 속도 유지 + 판 가속분만 반영
+            Vector3 frame = (nextPosition - platPosition) / deltaTime;
+            frame.y = 0f;
+
+            if (hasCarryVelocity)
+            {
+                Vector3 change = frame - lastCarryVelocity;
+                v.x += change.x;
+                v.z += change.z;
+            }
+            SetCarryVelocity(frame);
         }
 
-        EndTick(BodyPosition, plat);
+        body.linearVelocity = v;
     }
 
-    private Vector3 GetCarryDelta(
-        Vector3 position,
-        PlatformTilt plat,
-        Rigidbody platBody,
-        bool grounded)
+    private void SetCarryVelocity(Vector3 horizontal)
     {
-        bool teleported = hasAnchor &&
-            (position - lastFinalPosition).sqrMagnitude > teleportThreshold * teleportThreshold;
-
-        if (!hasAnchor || anchorPlatform != plat || teleported || platBody == null)
-            return Vector3.zero;
-
-        if (grounded && carryRotationWhenGrounded)
-        {
-            Vector3 carried = platBody.position + platBody.rotation * anchorLocal;
-            return carried - position;
-        }
-
-        // 공중: 판의 이동만 (Y 제외) — WheelCarrier와 동일
-        Vector3 delta = platBody.position - anchorPlatformPosition;
-        delta.y = 0f;
-        return delta;
+        lastCarryVelocity = horizontal;
+        hasCarryVelocity = true;
     }
 
-    private void EndTick(Vector3 finalPosition, PlatformTilt plat)
+    private void ClearCarry()
     {
-        lastFinalPosition = finalPosition;
+        hasCarryVelocity = false;
+        hasRideLocal = false;
+    }
 
-        var platBody = GetBody(plat);
-        if (platBody == null)
+    /// <summary>콜라이더 중심에서 아래로 얇은 박스를 쏴 판 윗면이 바로 밑에 있는지 확인.</summary>
+    private bool ProbePlatformGround()
+    {
+        if (probeCollider == null || !probeCollider.enabled)
+            return false;
+
+        Bounds b = probeCollider.bounds;
+        float half = Mathf.Max(0.01f, Mathf.Min(b.extents.x, b.extents.z) * 0.5f);
+        var halfExtents = new Vector3(half, 0.01f, half);
+        float distance = b.extents.y + groundProbeDistance;
+
+        int count = Physics.BoxCastNonAlloc(
+            b.center, halfExtents, Vector3.down, probeHits, Quaternion.identity,
+            distance, groundMask, QueryTriggerInteraction.Ignore);
+
+        for (int i = 0; i < count; i++)
         {
-            hasAnchor = false;
-            return;
+            var hit = probeHits[i];
+            if (hit.collider == null || IsOwnCollider(hit.collider))
+                continue;
+            if (hit.distance <= 0f)
+                continue;
+            if (hit.normal.y <= groundNormalThreshold)
+                continue;
+
+            var plat = hit.collider.GetComponentInParent<PlatformTilt>();
+            if (plat == null)
+                continue;
+
+            if (platform == null) platform = plat;
+            return true;
         }
 
-        anchorPlatform = plat;
-        anchorLocal = Quaternion.Inverse(platBody.rotation) * (finalPosition - platBody.position);
-        anchorPlatformPosition = platBody.position;
-        hasAnchor = true;
+        return false;
+    }
+
+    private bool IsOwnCollider(Collider c)
+    {
+        for (int i = 0; i < ownColliders.Length; i++)
+        {
+            if (ownColliders[i] == c)
+                return true;
+        }
+        return false;
     }
 
     private PlatformTilt FindContainingPlatform(Vector3 position)
@@ -363,37 +420,15 @@ public class WheelRider : MonoBehaviour
         nextRefreshTime = Time.unscaledTime + RefreshInterval;
     }
 
-    private void OnCollisionStay(Collision collision) => EvaluateContacts(collision);
-    private void OnCollisionEnter(Collision collision) => EvaluateContacts(collision);
-
-    private void EvaluateContacts(Collision collision)
-    {
-        if (IsNetworked && !HasStateAuthority) return;
-
-        var plat = collision.transform.GetComponentInParent<PlatformTilt>();
-        if (plat == null) return;
-
-        int count = collision.contactCount;
-        for (int i = 0; i < count; i++)
-        {
-            if (collision.GetContact(i).normal.y > groundNormalThreshold)
-            {
-                contactGrounded = true;
-                if (platform == null) platform = plat;
-                return;
-            }
-        }
-    }
-
 #if UNITY_EDITOR
     private void OnDrawGizmosSelected()
     {
-        if (!Application.isPlaying || !hasAnchor || anchorPlatform == null) return;
-        var platBody = GetBody(anchorPlatform);
+        if (!Application.isPlaying || !hasRideLocal || CurrentPlatform == null) return;
+        var platBody = GetBody(CurrentPlatform);
         if (platBody == null) return;
 
         Gizmos.color = IsOnPlatform ? Color.green : Color.cyan;
-        Gizmos.DrawWireSphere(platBody.position + platBody.rotation * anchorLocal, 0.12f);
+        Gizmos.DrawWireSphere(platBody.position + platBody.rotation * rideLocal, 0.12f);
     }
 #endif
 }

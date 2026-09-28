@@ -5,15 +5,21 @@ using UnityEngine;
 /// 판의 기울기를 읽어 구체에 보정 토크를 넣음.
 /// Host State Authority의 FixedUpdateNetwork에서만 시뮬한다.
 /// 구체는 non-kinematic Rigidbody여야 충돌, 경사, 넉백이 물리로 처리됨.
+/// Host 시각: visualRoot(메시 자식)만 틱 사이 보간. Client는 NetworkTransform이 루트를 보간.
 /// </summary>
 [DefaultExecutionOrder(100)]
 [RequireComponent(typeof(NetworkObject))]
 [RequireComponent(typeof(Rigidbody))]
-public class SphereDriver : NetworkBehaviour
+public class SphereDriver : NetworkBehaviour, IAfterTick
 {
     [Header("References")]
     [SerializeField] private PlatformTilt platform;
     [SerializeField] private WheelConfig config;
+
+    [Tooltip("메시만 담은 자식(콜라이더 없음). Host에서 틱 사이 보간.")]
+    [SerializeField] private Transform visualRoot;
+
+    [SerializeField] private float visualSnapDistance = 3f;
 
     [Header("Ground check")]
     [SerializeField] private LayerMask groundMask = ~0;
@@ -21,6 +27,7 @@ public class SphereDriver : NetworkBehaviour
 
     private Rigidbody body;
     private SphereCollider sphereCollider;
+    private TickVisualInterpolator visual;
 
     public bool IsGrounded { get; private set; }
 
@@ -50,6 +57,7 @@ public class SphereDriver : NetworkBehaviour
             Debug.LogWarning($"{name}: WheelConfig가 없어 기본값으로 실행합니다.", this);
         }
         body.maxAngularVelocity = config.maxAngularSpeed * 1.5f;
+        visual = new TickVisualInterpolator(transform, visualRoot);
     }
 
     public override void FixedUpdateNetwork()
@@ -58,6 +66,20 @@ public class SphereDriver : NetworkBehaviour
             return;
 
         Simulate();
+    }
+
+    void IAfterTick.AfterTick()
+    {
+        if (Object.HasStateAuthority)
+            visual.Capture(body.position, body.rotation, visualSnapDistance);
+    }
+
+    private void LateUpdate()
+    {
+        if (Object != null && Object.IsValid && Object.HasStateAuthority)
+            visual.Apply(Runner.LocalAlpha);
+        else
+            visual.RestoreLocal();
     }
 
     /// <summary>한 틱분 토크. Host SA에서만 호출.</summary>

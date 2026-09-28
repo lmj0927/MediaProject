@@ -144,13 +144,16 @@ public class BasicSpawner : MonoBehaviour, INetworkRunnerCallbacks
         if (scene.IsValid)
             sceneInfo.AddSceneRef(scene, LoadSceneMode.Additive);
 
-        await _runner.StartGame(new StartGameArgs()
+        var result = await _runner.StartGame(new StartGameArgs()
         {
             GameMode = mode,
             SessionName = "TestRoom",
             Scene = scene,
             SceneManager = gameObject.AddComponent<NetworkSceneManagerDefault>()
         });
+
+        if (result.Ok && _runner.IsServer && GetComponent<HostPhysicsStepper>() == null)
+            _runner.AddGlobal(gameObject.AddComponent<HostPhysicsStepper>());
     }
 
     private void OnGUI()
