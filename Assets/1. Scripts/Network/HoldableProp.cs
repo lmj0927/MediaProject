@@ -3,11 +3,15 @@ using UnityEngine;
 
 /// <summary>
 /// 네트워크 상자 등 잡기 가능한 Prop.
-/// NetworkObject + Collider 필요. Rigidbody가 있으면 던지기에 사용.
-/// 잡혀 있는 동안 홀더와의 충돌만 무시한다.
+/// free: Host WheelRider(판 목표 포즈 기반 속도 carry) + NetPosition.
+/// Host 시각: _visualRoot(메시 자식)만 틱 사이 보간 — 루트 RB는 건드리지 않음.
+/// Client 시각: RidingPlatform일 때 판 로컬 LateUpdate (parent 없음).
+/// held: HoldPoint 스냅. NetworkTransform 없음.
+/// _despawnBelowY 아래로 떨어지면 Host가 Despawn.
 /// </summary>
+[DefaultExecutionOrder(50)]
 [RequireComponent(typeof(NetworkObject))]
-public class HoldableProp : NetworkBehaviour, IHoldable
+public class HoldableProp : NetworkBehaviour, IHoldable, IAfterTick
 {
     [Tooltip("던질 때 속도에 곱하는 배율")]
     [SerializeField] private float _thrownMassScale = 1f;
@@ -15,24 +19,21 @@ public class HoldableProp : NetworkBehaviour, IHoldable
     [Tooltip("던질 때 홀더와 겹치지 않도록 앞으로 밀어내는 거리")]
     [SerializeField] private float _throwSeparation = 0.75f;
 
+    [Tooltip("메시만 담은 자식(콜라이더 없음). Host에서 틱 사이 보간.")]
+    [SerializeField] private Transform _visualRoot;
 
-    [Tooltip("놓거나 던진 뒤 들고 있던 사람과의 충돌 무시를 유지하는 최대 시간.\n" +
-             "겹침이 먼저 풀리면 그 즉시 충돌이 돌아옴. " +
-             "이게 없으면 손 위치에서 캡슐과 겹친 채로 충돌이 켜져, 물체와 사람이 서로 튕겨 나감.")]
+    [SerializeField] private float _visualSnapDistance = 2f;
 
-    [SerializeField] private float _releaseIgnoreMaxSeconds = 1f;
+    [Tooltip("이 월드 Y 아래로 떨어지면 Host가 Despawn")]
+    [SerializeField] private float _despawnBelowY = -30f;
 
     private Rigidbody _rigidbody;
     private Collider[] _colliders;
+    private TickVisualInterpolator _visual;
 
-    /// <summary>현재 홀더와 IgnoreCollision 중인지.</summary>
     private bool _ignoringHolderCollision;
-
-    /// <summary>Ignore를 건 홀더 NetworkId (해제 시 사용).</summary>
     private NetworkId _ignoredHolderId;
     private Collider[] _ignoredHolderColliders;
-
-    // 휠 연동. 둘 다 없어도 동작함.
 
     private WheelRider _wheelRider;
     private WeightSource _weightSource;
@@ -40,13 +41,14 @@ public class HoldableProp : NetworkBehaviour, IHoldable
     [Networked] private NetworkBool IsHeldNet { get; set; }
     [Networked] private NetworkId HeldById { get; set; }
 
-    /// <summary>프록시용 위치/회전 복제 상태.</summary>
     [Networked] private Vector3 NetPosition { get; set; }
     [Networked] private Quaternion NetRotation { get; set; }
 
-    // 놓은 직후 겹침이 풀릴 때까지 충돌을 무시할 대상
     [Networked] private NetworkId LastHolderId { get; set; }
-    [Networked] private TickTimer ReleaseIgnoreTimer { get; set; }
+
+    [Networked] private NetworkBool RidingPlatform { get; set; }
+    [Networked] private NetworkId PlatformObjectId { get; set; }
+    [Networked] private Vector3 PlatformLocalPosition { get; set; }
 
     public bool CanBeHeld => !IsHeldNet;
 
@@ -56,6 +58,7 @@ public class HoldableProp : NetworkBehaviour, IHoldable
         _colliders = GetComponentsInChildren<Collider>();
         _wheelRider = GetComponent<WheelRider>();
         _weightSource = GetComponent<WeightSource>();
+        _visual = new TickVisualInterpolator(transform, _visualRoot);
     }
 
     public override void Spawned()
@@ -74,40 +77,94 @@ public class HoldableProp : NetworkBehaviour, IHoldable
     {
         SyncHolderCollisionIgnore(canWriteState: Object.HasStateAuthority);
 
-        // 프록시는 네트워크 포즈만 적용
         if (!Object.HasStateAuthority)
         {
-            transform.SetPositionAndRotation(NetPosition, NetRotation);
+            if (!IsHeldNet && !RidingPlatform)
+                transform.SetPositionAndRotation(NetPosition, NetRotation);
             return;
         }
 
-        // 잡혀 있지 않을 때만 물리 결과를 네트워크 포즈에 기록
-        // (잡혀 있으면 Player.SnapToHoldPoint가 NetPosition을 갱신)
-        if (!IsHeldNet)
+        if (IsHeldNet)
         {
-            NetPosition = transform.position;
-            NetRotation = transform.rotation;
+            ClearPlatformRideState();
+            return;
         }
+
+        Vector3 bodyPosition = _rigidbody != null ? _rigidbody.position : transform.position;
+        if (bodyPosition.y < _despawnBelowY)
+        {
+            Runner.Despawn(Object);
+            return;
+        }
+
+        _wheelRider?.Simulate(Runner.DeltaTime);
+        SyncPlatformRideState();
+
+        NetPosition = _rigidbody != null ? _rigidbody.position : transform.position;
+        NetRotation = _rigidbody != null ? _rigidbody.rotation : transform.rotation;
+
+        if (_weightSource != null)
+            _weightSource.SetSimulatedPosition(NetPosition);
+    }
+
+    void IAfterTick.AfterTick()
+    {
+        if (Object == null || !Object.IsValid || !Object.HasStateAuthority)
+            return;
+
+        // held 중엔 손 위치로 계속 리셋 → 놓는 순간 손에서부터 이어서 보간
+        if (IsHeldNet || _rigidbody == null)
+            _visual.ResetTo(transform.position, transform.rotation);
+        else
+            _visual.Capture(_rigidbody.position, _rigidbody.rotation, _visualSnapDistance);
     }
 
     public override void Render()
     {
         SyncHolderCollisionIgnore(canWriteState: false);
 
-        if (!Object.HasStateAuthority)
+        if (IsHeldNet)
+            return;
+
+        // Host RB는 FUN delta만. Client만 판 로컬 시각 보정 (Player와 동일 패턴).
+        if (!Object.HasStateAuthority && !RidingPlatform)
             transform.SetPositionAndRotation(NetPosition, NetRotation);
     }
 
-    /// <summary>
-    /// 들려 있으면 화면에 그리기 직전에 손 위치로 옮김.
-    /// 플레이어는 Fusion이 틱 사이를 보간한 위치에 그려지는데, 물체는 틱 위치에 머물러 있으면
-    /// 둘이 다른 박자로 그려져 손 위에서 물체가 떨림.
-    /// Render 순서는 보장되지 않으므로 모든 Render가 끝난 LateUpdate에서 처리함.
-    /// 다음 틱에서 들고 있는 쪽이 다시 틱 위치로 옮기므로 시뮬레이션에는 영향 없음.
-    /// </summary>
+    public void SnapVisualToHoldPoint(Transform holdPoint)
+    {
+        if (holdPoint == null)
+            return;
+
+        transform.SetPositionAndRotation(holdPoint.position, holdPoint.rotation);
+    }
+
     private void LateUpdate()
     {
-        if (Object == null || !Object.IsValid || !IsHeldNet || !HeldById.IsValid || Runner == null)
+        if (Object == null || !Object.IsValid)
+            return;
+
+        if (IsHeldNet)
+        {
+            _visual.RestoreLocal();
+            SnapVisualToHolderHoldPoint();
+            return;
+        }
+
+        // Host: 루트 월드 스냅은 RB 시뮬과 싸우므로 시각 자식만 보간.
+        if (Object.HasStateAuthority)
+        {
+            _visual.Apply(Runner.LocalAlpha);
+            return;
+        }
+
+        _visual.RestoreLocal();
+        ApplyPlatformRenderCorrection();
+    }
+
+    private void SnapVisualToHolderHoldPoint()
+    {
+        if (!HeldById.IsValid || Runner == null)
             return;
 
         if (!Runner.TryFindObject(HeldById, out var holderObject))
@@ -117,7 +174,46 @@ public class HoldableProp : NetworkBehaviour, IHoldable
         if (holder == null || holder.HoldPoint == null)
             return;
 
-        transform.SetPositionAndRotation(holder.HoldPoint.position, holder.HoldPoint.rotation);
+        SnapVisualToHoldPoint(holder.HoldPoint);
+    }
+
+    private void ApplyPlatformRenderCorrection()
+    {
+        if (!RidingPlatform || !PlatformObjectId.IsValid || Runner == null)
+            return;
+
+        if (!Runner.TryFindObject(PlatformObjectId, out var platformObject))
+            return;
+
+        if (platformObject.TryGetComponent<PlatformTilt>(out var tilt))
+        {
+            tilt.GetRenderPose(out var platformPosition, out var platformRotation);
+            transform.position = platformPosition + platformRotation * PlatformLocalPosition;
+            return;
+        }
+
+        var platform = platformObject.transform;
+        transform.position = platform.position + platform.rotation * PlatformLocalPosition;
+    }
+
+    private void SyncPlatformRideState()
+    {
+        if (_wheelRider == null ||
+            !_wheelRider.TryGetRideLocal(out var platformObject, out var local))
+        {
+            ClearPlatformRideState();
+            return;
+        }
+
+        RidingPlatform = true;
+        PlatformObjectId = platformObject.Id;
+        PlatformLocalPosition = local;
+    }
+
+    private void ClearPlatformRideState()
+    {
+        RidingPlatform = false;
+        PlatformObjectId = default;
     }
 
     public void SnapToHoldPoint(Transform holdPoint)
@@ -129,8 +225,6 @@ public class HoldableProp : NetworkBehaviour, IHoldable
         NetPosition = transform.position;
         NetRotation = transform.rotation;
 
-
-        // 틱 안의 실제 위치를 무게 계산에 알려줌. 틱 밖에서는 화면용 위치로 바뀌어 있음.
         if (_weightSource != null)
             _weightSource.SetSimulatedPosition(transform.position);
     }
@@ -143,10 +237,10 @@ public class HoldableProp : NetworkBehaviour, IHoldable
         IsHeldNet = true;
         HeldById = holder.Id;
         LastHolderId = default;
-        ReleaseIgnoreTimer = TickTimer.None;
+        ClearPlatformRideState();
+        _wheelRider?.NotifyPickedUp();
         SetPhysicsHeld(true);
 
-        // 들린 동안에는 들고 있는 쪽 무게에 합산되도록 직접 연결함.
         if (_weightSource != null)
             _weightSource.SetSupportOverride(holder.GetComponent<WeightSource>());
 
@@ -158,7 +252,7 @@ public class HoldableProp : NetworkBehaviour, IHoldable
         if (!Object.HasStateAuthority)
             return;
 
-        BeginReleaseIgnore();
+        BeginReleaseOverlapIgnore();
 
         IsHeldNet = false;
         HeldById = default;
@@ -169,9 +263,14 @@ public class HoldableProp : NetworkBehaviour, IHoldable
 
         SyncHolderCollisionIgnore(canWriteState: true);
 
-        // 월드 기준으로 정지시키면 휠과 함께 달리던 플레이어에게 휠 속도로 부딪힘.
+        if (_wheelRider != null)
+            _wheelRider.SoftRelease();
+        else if (_rigidbody != null && !_rigidbody.isKinematic)
+            _rigidbody.linearVelocity = Vector3.zero;
 
-        SetReleaseVelocity(Vector3.zero);
+        SyncPlatformRideState();
+        NetPosition = transform.position;
+        NetRotation = transform.rotation;
     }
 
     public void OnThrown(Vector3 worldVelocity)
@@ -179,7 +278,7 @@ public class HoldableProp : NetworkBehaviour, IHoldable
         if (!Object.HasStateAuthority)
             return;
 
-        BeginReleaseIgnore();
+        BeginReleaseOverlapIgnore();
         ApplyThrowSeparation(worldVelocity);
 
         IsHeldNet = false;
@@ -191,37 +290,22 @@ public class HoldableProp : NetworkBehaviour, IHoldable
 
         SyncHolderCollisionIgnore(canWriteState: true);
 
-        // 던지는 속도는 휠 속도 위에 더함. 그래야 달리는 휠 위에서 던져도 앞으로 날아감.
-        SetReleaseVelocity(worldVelocity * _thrownMassScale);
+        if (_wheelRider != null)
+            _wheelRider.BeginThrownFlight(worldVelocity * _thrownMassScale);
+        else if (_rigidbody != null && !_rigidbody.isKinematic)
+            _rigidbody.linearVelocity = worldVelocity * _thrownMassScale;
 
         if (_rigidbody != null)
             _rigidbody.angularVelocity = Vector3.zero;
 
+        ClearPlatformRideState();
         NetPosition = transform.position;
         NetRotation = transform.rotation;
     }
 
-
-    /// <summary>놓는 순간의 들고 있던 사람을 기억해 두고, 겹침이 풀릴 때까지 충돌을 계속 무시함.</summary>
-    private void BeginReleaseIgnore()
+    private void BeginReleaseOverlapIgnore()
     {
         LastHolderId = HeldById;
-        ReleaseIgnoreTimer = TickTimer.CreateFromSeconds(Runner, _releaseIgnoreMaxSeconds);
-    }
-
-    /// <summary>
-    /// 놓거나 던진 직후의 속도를 설정함.
-    /// 휠 위라면 휠 속도를 기본으로 깔고 그 위에 추가 속도를 더함.
-    /// </summary>
-    private void SetReleaseVelocity(Vector3 extraVelocity)
-    {
-        if (_rigidbody == null || _rigidbody.isKinematic)
-            return;
-
-        if (_wheelRider != null)
-            _wheelRider.InheritFrameVelocity(extraVelocity);
-        else
-            _rigidbody.linearVelocity = extraVelocity;
     }
 
     private void ApplyThrowSeparation(Vector3 worldVelocity)
@@ -232,9 +316,10 @@ public class HoldableProp : NetworkBehaviour, IHoldable
             return;
 
         transform.position += push.normalized * _throwSeparation;
+        if (_rigidbody != null)
+            _rigidbody.position = transform.position;
     }
 
-    /// <summary>잡힌 동안 kinematic, 놓이면 중력/물리 복구.</summary>
     private void SetPhysicsHeld(bool held)
     {
         if (_rigidbody == null)
@@ -244,10 +329,6 @@ public class HoldableProp : NetworkBehaviour, IHoldable
         _rigidbody.useGravity = !held;
     }
 
-    /// <summary>
-    /// 지금 충돌을 무시해야 할 대상을 구함.
-    /// 들려 있으면 들고 있는 사람, 놓은 직후라면 겹침이 풀리기 전까지 직전에 들고 있던 사람.
-    /// </summary>
     private NetworkId GetIgnoreTarget(bool canWriteState)
     {
         if (IsHeldNet && HeldById.IsValid)
@@ -256,18 +337,11 @@ public class HoldableProp : NetworkBehaviour, IHoldable
         if (!LastHolderId.IsValid)
             return default;
 
-        bool expired = ReleaseIgnoreTimer.ExpiredOrNotRunning(Runner);
-        bool stillOverlapping = !expired && IsOverlapping(LastHolderId);
-
-        if (stillOverlapping)
+        if (IsOverlapping(LastHolderId))
             return LastHolderId;
 
-        // 겹침이 풀렸거나 시간이 다 됨. 상태 쓰기는 틱 안의 권한자만 가능함.
         if (canWriteState)
-        {
             LastHolderId = default;
-            ReleaseIgnoreTimer = TickTimer.None;
-        }
         return default;
     }
 

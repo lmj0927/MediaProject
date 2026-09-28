@@ -328,6 +328,13 @@ public class Player : NetworkBehaviour, IHoldable
         if (Runner == null || !Runner.TryFindObject(PlatformObjectId, out var platformObject))
             return;
 
+        if (platformObject.TryGetComponent<PlatformTilt>(out var tilt))
+        {
+            tilt.GetRenderPose(out var platformPosition, out var platformRotation);
+            transform.position = platformPosition + platformRotation * PlatformLocalPosition;
+            return;
+        }
+
         var platform = platformObject.transform;
         transform.position = platform.position + platform.rotation * PlatformLocalPosition;
     }
