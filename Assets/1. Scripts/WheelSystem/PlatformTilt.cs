@@ -6,12 +6,13 @@ using UnityEngine;
 /// COM→기울기는 Host SA만 계산하고 NetTilt로 복제한다.
 /// 구체 추종(위치/회전 적용)은 모든 피어에서 수행 — 판에 NetworkTransform을 두지 않는다.
 /// 판은 Kinematic Rigidbody여야 함. 구체 pose는 Wheel 쪽 NetworkTransform.
+/// Host: 루트(콜라이더)는 틱 포즈 고정, modelRoot만 틱 사이 보간. Client: Render에서 루트를 보간된 구체에 붙임.
 /// </summary>
 [DefaultExecutionOrder(-50)]
 [RequireComponent(typeof(NetworkObject))]
 [RequireComponent(typeof(Rigidbody))]
 [RequireComponent(typeof(CenterOfMassSolver))]
-public class PlatformTilt : NetworkBehaviour
+public class PlatformTilt : NetworkBehaviour, IAfterTick
 {
 
     [System.Serializable]
@@ -93,6 +94,13 @@ public class PlatformTilt : NetworkBehaviour
     private float cachedPlatformRadius = -1f;
     private Quaternion previousRotation = Quaternion.identity;
     private Vector3 angularVelocity;
+    private Rigidbody sphereBody;
+    private TickVisualInterpolator modelVisual;
+    private const float VisualSnapDistance = 3f;
+
+    private Vector3 stepTargetPosition;
+    private Quaternion stepTargetRotation = Quaternion.identity;
+    private bool hasStepTarget;
 
     /// <summary>Host가 계산한 기울기. 클라는 이 값으로 판을 붙인다.</summary>
     [Networked] private Quaternion NetTilt { get; set; }
@@ -302,10 +310,12 @@ public class PlatformTilt : NetworkBehaviour
         }
         else
         {
+            sphereBody = sphere.GetComponent<Rigidbody>();
             IgnoreSphereCollisions();
         }
 
         ApplyModelRotationOffset();
+        modelVisual = new TickVisualInterpolator(transform, modelRoot);
 
         currentTilt = transform.rotation;
         previousRotation = currentTilt;
@@ -354,14 +364,50 @@ public class PlatformTilt : NetworkBehaviour
         ApplyPose(currentTilt);
     }
 
+    void IAfterTick.AfterTick()
+    {
+        if (Object.HasStateAuthority)
+            modelVisual.Capture(body.position, body.rotation, VisualSnapDistance);
+    }
+
     public override void Render()
     {
-        if (sphere == null) return;
+        // Host 루트는 물리 틱 포즈 유지 (시각은 LateUpdate에서 modelRoot만)
+        if (Object.HasStateAuthority || sphere == null) return;
 
-        // 구체 NetworkTransform 보간에 맞춰 매시도 매 프레임 붙임
-        Quaternion tilt = Object.HasStateAuthority ? currentTilt : NetTilt;
-        Vector3 pos = sphere.position + tilt * Vector3.up * HeightOffset;
-        transform.SetPositionAndRotation(pos, tilt);
+        // Client: 구체 NetworkTransform 보간에 맞춰 매 프레임 붙임
+        Vector3 pos = sphere.position + NetTilt * Vector3.up * HeightOffset;
+        transform.SetPositionAndRotation(pos, NetTilt);
+    }
+
+    private void LateUpdate()
+    {
+        if (modelVisual == null) return;
+
+        if (UsesTickInterpolation)
+            modelVisual.Apply(Runner.LocalAlpha);
+        else
+            modelVisual.RestoreLocal();
+    }
+
+    private bool UsesTickInterpolation =>
+        Object != null && Object.IsValid && Object.HasStateAuthority &&
+        modelVisual != null && modelVisual.HasPose;
+
+    /// <summary>
+    /// 화면에 보이는 판 포즈. 판 로컬 시각 보정(Player/Prop LateUpdate)은 transform 대신 이것을 쓴다.
+    /// Host: 틱 사이 보간값. Client: Render에서 붙인 transform.
+    /// </summary>
+    public void GetRenderPose(out Vector3 position, out Quaternion rotation)
+    {
+        if (UsesTickInterpolation)
+        {
+            modelVisual.Evaluate(Runner.LocalAlpha, out position, out rotation);
+            return;
+        }
+
+        position = transform.position;
+        rotation = transform.rotation;
     }
 
     /// <summary>Host SA: COM 기반 기울기만 갱신.</summary>
@@ -397,7 +443,32 @@ public class PlatformTilt : NetworkBehaviour
 
         if (sphere == null) return;
 
-        body.MovePosition(sphere.position + tilt * Vector3.up * HeightOffset);
+        Vector3 spherePosition = Object.HasStateAuthority && sphereBody != null
+            ? sphereBody.position
+            : sphere.position;
+        Vector3 target = spherePosition + tilt * Vector3.up * HeightOffset;
+        body.MovePosition(target);
+
+        stepTargetPosition = target;
+        stepTargetRotation = tilt;
+        hasStepTarget = true;
+    }
+
+    /// <summary>
+    /// 이번 틱 Physics.Simulate 후 판이 도달할 포즈 (FUN에서 MovePosition한 목표).
+    /// Rider는 이 포즈와 현재 포즈 차이로 표면 속도를 구한다. FUN(-50) 이후에만 유효.
+    /// </summary>
+    public void GetStepTargetPose(out Vector3 position, out Quaternion rotation)
+    {
+        if (hasStepTarget)
+        {
+            position = stepTargetPosition;
+            rotation = stepTargetRotation;
+            return;
+        }
+
+        position = body.position;
+        rotation = body.rotation;
     }
 
     private Quaternion CalculateTargetTilt()
