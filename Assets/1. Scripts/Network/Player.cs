@@ -39,6 +39,12 @@ public class Player : NetworkBehaviour, IHoldable
     [Tooltip("Stamp 중 아래 속도 크기 (임시 튜닝값)")]
     [SerializeField] private float _stampDownSpeed = 25f;
 
+    [Tooltip("Stamp 착지 직후 WeightSource 무게 배율 (임시 튜닝값)")]
+    [SerializeField] private float _stampWeightMultiplier = 3f;
+
+    [Tooltip("착지 후 무게 배율을 유지하는 시간(초) (임시 튜닝값)")]
+    [SerializeField] private float _stampWeightDuration = 0.3f;
+
     [Tooltip("자기 캐릭터 화면에서만 표시할 이름표")]
     [SerializeField] private GameObject _nameTag;
 
@@ -64,6 +70,9 @@ public class Player : NetworkBehaviour, IHoldable
     // 휠 연동. 둘 다 없어도 동작함(휠이 없는 씬 등).
     private WheelCarrier _carrier;
     private WeightSource _weightSource;
+
+    /// <summary>Stamp 착지 무게 배율 종료 시점. Host SA 전용이라 복제하지 않음.</summary>
+    private TickTimer _stampWeightTimer;
 
     /// <summary>점프 성공 시 증가. 원격도 Render에서 Trigger 재생.</summary>
     [Networked] private int JumpCount { get; set; }
@@ -156,6 +165,8 @@ public class Player : NetworkBehaviour, IHoldable
         if (!Object.HasStateAuthority)
             return;
 
+        UpdateStampWeight();
+
         // 잡혀 있으면 입력/Move 스킵 (비활성 CC에 Move 호출 방지)
         if (IsHeldNet)
         {
@@ -203,7 +214,10 @@ public class Player : NetworkBehaviour, IHoldable
             _cc.Move(Vector3.zero);
 
             if (_cc.Grounded)
+            {
                 IsStamping = false;
+                BeginStampWeight();
+            }
         }
         else
         {
@@ -292,6 +306,34 @@ public class Player : NetworkBehaviour, IHoldable
         velocity.z = 0f;
         velocity.y = -Mathf.Abs(_stampDownSpeed);
         _cc.Velocity = velocity;
+    }
+
+    /// <summary>
+    /// Stamp 착지: 잠깐 무게만 올린다. 기울기/구동은 기존 COM 계산이 그대로 처리.
+    /// </summary>
+    private void BeginStampWeight()
+    {
+        if (_weightSource == null || _stampWeightDuration <= 0f)
+            return;
+
+        _weightSource.SetWeightMultiplier(_stampWeightMultiplier);
+        _stampWeightTimer = TickTimer.CreateFromSeconds(Runner, _stampWeightDuration);
+    }
+
+    /// <summary>무게 배율 시간이 끝났으면 1로 복귀.</summary>
+    private void UpdateStampWeight()
+    {
+        if (!_stampWeightTimer.Expired(Runner))
+            return;
+
+        EndStampWeight();
+    }
+
+    private void EndStampWeight()
+    {
+        _stampWeightTimer = TickTimer.None;
+        if (_weightSource != null)
+            _weightSource.SetWeightMultiplier(1f);
     }
 
     public override void Render()
@@ -443,6 +485,7 @@ public class Player : NetworkBehaviour, IHoldable
             return;
 
         IsStamping = false;
+        EndStampWeight();
         IsHeldNet = true;
         HeldById = holder.Id;
 
