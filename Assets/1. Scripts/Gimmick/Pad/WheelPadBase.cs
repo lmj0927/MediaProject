@@ -38,8 +38,8 @@ public abstract class WheelPadBase : NetworkBehaviour
         var box = GetComponent<BoxCollider>();
         box.isTrigger = true;
 
-        box.size = new Vector3(1f, 2f, 1f);
-        box.center = new Vector3(0f, 1f, 0f);
+        box.size = new Vector3(1f, 0.1f, 1f);
+        box.center = new Vector3(0f, 0f, 0f);
     }
 
     protected virtual void Awake()
