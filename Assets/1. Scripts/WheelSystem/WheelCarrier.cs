@@ -12,7 +12,7 @@ using UnityEngine;
 ///   1. GetCarryDelta로 이동량을 받아 자체 이동보다 먼저 적용
 ///   2. 자체 이동
 ///   3. EndTick으로 최종 위치를 기록
-///
+///   
 /// Host State Authority에서만 GetCarryDelta/EndTick을 적용한다.
 /// </summary>
 [RequireComponent(typeof(WeightSource))]
@@ -50,6 +50,19 @@ public class WheelCarrier : MonoBehaviour
                 "바닥에 닿으면 거기서 멈추므로 파고들지 않음. 0이면 사용 안 함.")]
     [SerializeField] private float groundSnapDistance = 0.08f;
 
+    [Header("Deck support")]
+    [Tooltip("발밑 이 거리 안에 무언가 있으면 판 위에 서 있는 것으로 봄.")]
+    [SerializeField] private float supportDistance = 0.2f;
+
+    [Tooltip("발보다 이만큼 위에서부터 검사함. 판이 발을 파고든 상태도 서 있는 것으로 잡기 위함.")]
+    [SerializeField] private float supportLift = 0.3f;
+
+    [Tooltip("한 틱에 판에서 이보다 많이 멀어지면 떠오르는 중으로 보고 서 있지 않은 것으로 봄. 점프 직후 재점프 방지.")]
+    [SerializeField] private float supportRiseTolerance = 0.04f;
+
+    [Tooltip("발밑 검사 레이어.")]
+    [SerializeField] private LayerMask supportMask = ~0;
+
     private static readonly List<PlatformTilt> platforms = new();
     private static readonly Dictionary<PlatformTilt, Rigidbody> bodies = new();
     private static float nextRefreshTime;
@@ -61,8 +74,19 @@ public class WheelCarrier : MonoBehaviour
     private Vector3 anchorPlatformPosition;
     private Vector3 lastFinalPosition;
 
+    private CharacterController characterController;
+    private readonly RaycastHit[] supportHits = new RaycastHit[8];
+    private float lastSupportGap;
+    private bool hasLastSupportGap;
+
     /// <summary>현재 실려 가고 있는 판. 없으면 null.</summary>
     public PlatformTilt CurrentPlatform { get; private set; }
+
+    /// <summary>
+    /// 판 위(판에 실린 물체 위 포함)에 서 있는지. 직전 EndTick 기준.
+    /// 판이 움직이는 중에도 끊기지 않으므로 점프 조건과 애니 착지에 씀.
+    /// </summary>
+    public bool IsStandingOnDeck { get; private set; }
 
     /// <summary>
     /// 이번 틱에 적용할 이동량을 구함. 자체 이동보다 먼저 적용할 것.
@@ -122,6 +146,7 @@ public class WheelCarrier : MonoBehaviour
             !GetDeckPose(CurrentPlatform, out Vector3 deckPosition, out Quaternion deckRotation))
         {
             hasAnchor = false;
+            ClearDeckSupport();
             return;
         }
 
@@ -129,6 +154,64 @@ public class WheelCarrier : MonoBehaviour
         anchorLocal = Quaternion.Inverse(deckRotation) * (finalPosition - deckPosition);
         anchorPlatformPosition = deckPosition;
         hasAnchor = true;
+
+        UpdateDeckSupport();
+    }
+
+    /// <summary>
+    /// 발밑을 직접 검사해 판 위에 서 있는지 판정함.
+    /// 발보다 조금 위에서 쏘아 판이 발을 파고든 상태도 잡음.
+    /// 판에서 멀어지는 중이면 서 있지 않은 것으로 봄.
+    /// </summary>
+    private void UpdateDeckSupport()
+    {
+        if (characterController == null) characterController = GetComponent<CharacterController>();
+
+        if (CurrentPlatform == null || characterController == null || !characterController.enabled)
+        {
+            ClearDeckSupport();
+            return;
+        }
+
+        Vector3 s = transform.lossyScale;
+        float radius = characterController.radius * Mathf.Max(Mathf.Abs(s.x), Mathf.Abs(s.z)) * 0.9f;
+        Vector3 center = transform.TransformPoint(characterController.center);
+        Vector3 foot = center + Vector3.down * (characterController.height * 0.5f * Mathf.Abs(s.y));
+
+        Vector3 origin = foot + Vector3.up * (radius + supportLift);
+        float distance = supportLift + supportDistance;
+
+        int count = Physics.SphereCastNonAlloc(
+            origin, radius, Vector3.down, supportHits, distance, supportMask, QueryTriggerInteraction.Ignore);
+
+        float best = float.PositiveInfinity;
+        for (int i = 0; i < count; i++)
+        {
+            var col = supportHits[i].collider;
+            if (col == null || col.transform.IsChildOf(transform)) continue;
+
+            // 시작부터 겹친 대상은 distance가 0으로 오므로 판이 발을 파고든 경우도 포함됨
+            best = Mathf.Min(best, supportHits[i].distance);
+        }
+
+        if (float.IsPositiveInfinity(best))
+        {
+            ClearDeckSupport();
+            return;
+        }
+
+        float gap = best - supportLift;
+        bool rising = hasLastSupportGap && gap - lastSupportGap > supportRiseTolerance;
+
+        IsStandingOnDeck = gap <= supportDistance && !rising;
+        lastSupportGap = gap;
+        hasLastSupportGap = true;
+    }
+
+    private void ClearDeckSupport()
+    {
+        IsStandingOnDeck = false;
+        hasLastSupportGap = false;
     }
 
     /// <summary>기준이 되는 판 포즈. 현재 충돌체 위치.</summary>
@@ -148,7 +231,11 @@ public class WheelCarrier : MonoBehaviour
     }
 
     /// <summary>기준점을 버림. 강제로 위치를 옮긴 직후 호출.</summary>
-    public void ResetAnchor() => hasAnchor = false;
+    public void ResetAnchor()
+    {
+        hasAnchor = false;
+        ClearDeckSupport();
+    }
 
     /// <summary>대상이 들어가 있는 판을 찾음. 여러 개면 가장 가까운 것.</summary>
     private PlatformTilt FindContainingPlatform(Vector3 position)

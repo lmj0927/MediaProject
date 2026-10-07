@@ -140,6 +140,11 @@ public class Player : NetworkBehaviour, IHoldable
     private bool IsGroundedForGameplay => GroundedNet;
 
     /// <summary>
+    /// 판 위에 서 있는지. 판이 상승 중이면 CC 착지 판정이 끊기므로 따로 판정한 값을 함께 씀.
+    /// </summary>
+    private bool IsStandingOnDeck => _carrier != null && _carrier.IsStandingOnDeck;
+
+    /// <summary>
     /// 로컬에서 이 아바타의 Input Authority일 때만 이름표를 켠다.
     /// (Host/Join 각각 자기 캐릭터만 보임. 네트워크 동기화 불필요)
     /// </summary>
@@ -224,9 +229,17 @@ public class Player : NetworkBehaviour, IHoldable
             var direction = data.direction;
             direction.y = 0f;
 
-            if (pressed.IsSet(PlayerInputButton.Jump) && IsGroundedForGameplay)
+            if (pressed.IsSet(PlayerInputButton.Jump) && (IsGroundedForGameplay || IsStandingOnDeck))
             {
-                _cc.Jump();
+                // 착지 판정이 끊긴 동안 쌓인 낙하 속도를 지워 항상 같은 높이로 뜀
+                var velocity = _cc.Velocity;
+                if (velocity.y < 0f)
+                {
+                    velocity.y = 0f;
+                    _cc.Velocity = velocity;
+                }
+
+                _cc.Jump(ignoreGrounded: true);
                 JumpCount++;
             }
 
@@ -250,7 +263,7 @@ public class Player : NetworkBehaviour, IHoldable
         if (_cc == null)
             return;
 
-        GroundedNet = _cc.Grounded;
+        GroundedNet = _cc.Grounded || IsStandingOnDeck;
     }
 
     /// <summary>Host가 판 기준 로컬 좌표를 복제 (Client LateUpdate 시각 보정).</summary>
