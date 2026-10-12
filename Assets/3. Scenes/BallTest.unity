@@ -1073,8 +1073,12 @@ PrefabInstance:
       value: JumpPad
       objectReference: {fileID: 0}
     - target: {fileID: 733858658768148632, guid: 3291d5ccd83c61044ad92393b4e02b98, type: 3}
+      propertyPath: jumpHeight
+      value: 22.94
+      objectReference: {fileID: 0}
+    - target: {fileID: 733858658768148632, guid: 3291d5ccd83c61044ad92393b4e02b98, type: 3}
       propertyPath: horizontalSpeed
-      value: 7.7
+      value: 15.39
       objectReference: {fileID: 0}
     - target: {fileID: 5534418135823024870, guid: 3291d5ccd83c61044ad92393b4e02b98, type: 3}
       propertyPath: m_LocalPosition.x
