@@ -11,7 +11,7 @@ using UnityEngine;
 /// </summary>
 [DefaultExecutionOrder(50)]
 [RequireComponent(typeof(NetworkObject))]
-public class HoldableProp : NetworkBehaviour, IHoldable, IAfterTick
+public class HoldableProp : NetworkBehaviour, IHoldable, ILaunchable, IAfterTick
 {
     [Tooltip("던질 때 속도에 곱하는 배율")]
     [SerializeField] private float _thrownMassScale = 1f;
@@ -301,6 +301,44 @@ public class HoldableProp : NetworkBehaviour, IHoldable, IAfterTick
         ClearPlatformRideState();
         NetPosition = transform.position;
         NetRotation = transform.rotation;
+    }
+
+    /// <summary>
+    /// 폭발 등 외부 충격. 들려 있으면 홀더 손에서 풀린 뒤 날아간다.
+    /// 판 위 착지 carry가 수평 속도를 덮어쓰지 않도록 던지기 비행으로 전환.
+    /// </summary>
+    public void Launch(Vector3 worldVelocity)
+    {
+        if (!Object.HasStateAuthority)
+            return;
+
+        if (IsHeldNet)
+            ReleaseFromHolder();
+
+        if (_wheelRider != null)
+            _wheelRider.BeginThrownFlight(worldVelocity);
+        else if (_rigidbody != null && !_rigidbody.isKinematic)
+            _rigidbody.linearVelocity = worldVelocity;
+
+        if (_rigidbody != null && !_rigidbody.isKinematic)
+            _rigidbody.angularVelocity = Vector3.zero;
+
+        ClearPlatformRideState();
+        NetPosition = transform.position;
+        NetRotation = transform.rotation;
+    }
+
+    /// <summary>홀더가 놓치게 함. 홀더를 못 찾으면 스스로 놓인 상태로 전환.</summary>
+    private void ReleaseFromHolder()
+    {
+        if (HeldById.IsValid && Runner.TryFindObject(HeldById, out var holderObject) &&
+            holderObject.TryGetComponent<Player>(out var holder))
+        {
+            holder.DropHeld();
+        }
+
+        if (IsHeldNet)
+            OnReleased();
     }
 
     private void BeginReleaseOverlapIgnore()

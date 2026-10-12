@@ -10,7 +10,7 @@ using UnityEngine;
 /// 든 대상은 홀더 LateUpdate에서 HoldPoint에 붙이고, held 중에는 NetPosition/NCC 보간을 덮어쓴다.
 /// </summary>
 [DefaultExecutionOrder(50)]
-public class Player : NetworkBehaviour, IHoldable
+public class Player : NetworkBehaviour, IHoldable, ILaunchable
 {
     // Animator 파라미터 해시 (문자열 조회 비용 절약)
     private static readonly int SpeedHash = Animator.StringToHash("Speed");
@@ -45,6 +45,10 @@ public class Player : NetworkBehaviour, IHoldable
     [Tooltip("착지 후 무게 배율을 유지하는 시간(초) (임시 튜닝값)")]
     [SerializeField] private float _stampWeightDuration = 0.3f;
 
+    [Header("Launch")]
+    [Tooltip("날아간 직후 이 시간(초) 동안은 착지로 보지 않음. 발사 틱에 바로 착지 판정되는 것을 막음.")]
+    [SerializeField] private float _launchMinAirTime = 0.15f;
+
     [Tooltip("자기 캐릭터 화면에서만 표시할 이름표")]
     [SerializeField] private GameObject _nameTag;
 
@@ -74,6 +78,9 @@ public class Player : NetworkBehaviour, IHoldable
     /// <summary>Stamp 착지 무게 배율 종료 시점. Host SA 전용이라 복제하지 않음.</summary>
     private TickTimer _stampWeightTimer;
 
+    /// <summary>날아간 뒤 착지 판정을 시작하는 시점. Host SA 전용.</summary>
+    private TickTimer _launchGraceTimer;
+
     /// <summary>점프 성공 시 증가. 원격도 Render에서 Trigger 재생.</summary>
     [Networked] private int JumpCount { get; set; }
 
@@ -85,6 +92,9 @@ public class Player : NetworkBehaviour, IHoldable
 
     /// <summary>공중 Stamp 중(착지까지). Host 시뮬 상태.</summary>
     [Networked] private NetworkBool IsStamping { get; set; }
+
+    /// <summary>폭발 등으로 날아가는 중(착지까지). 입력과 NCC 감속을 무시.</summary>
+    [Networked] private NetworkBool IsLaunched { get; set; }
 
     /// <summary>Host 시뮬 착지 여부. Client 애니/점프·Stamp 판정에 사용.</summary>
     [Networked] private NetworkBool GroundedNet { get; set; }
@@ -172,6 +182,16 @@ public class Player : NetworkBehaviour, IHoldable
         {
             SyncGroundedNet();
             ClearPlatformRideState();
+            return;
+        }
+
+        if (IsLaunched)
+        {
+            // 착지 직후 묵은 버튼이 엣지로 잡히지 않도록 이전 상태만 갱신
+            if (GetInput(out NetworkInputData launchedInput))
+                _previousButtons = launchedInput.buttons;
+
+            SimulateLaunched();
             return;
         }
 
@@ -336,6 +356,85 @@ public class Player : NetworkBehaviour, IHoldable
             _weightSource.SetWeightMultiplier(1f);
     }
 
+    /// <summary>
+    /// 폭발 등 외부 충격. 들고 있던 것은 놓치고, 들려 있었으면 풀려난 뒤 날아간다.
+    /// 착지할 때까지 입력과 NCC 감속을 무시 (NCC.Move는 입력 시 maxSpeed로 잘라 넉백이 사라짐).
+    /// </summary>
+    public void Launch(Vector3 worldVelocity)
+    {
+        if (!Object.HasStateAuthority || _cc == null)
+            return;
+
+        DropHeld();
+
+        if (IsHeldNet)
+            ReleaseFromHolder();
+
+        IsStamping = false;
+        EndStampWeight();
+
+        _cc.Velocity = worldVelocity;
+        IsLaunched = true;
+        _launchGraceTimer = TickTimer.CreateFromSeconds(Runner, _launchMinAirTime);
+    }
+
+    /// <summary>들고 있는 대상을 제자리에 놓침. Host SA.</summary>
+    public void DropHeld()
+    {
+        if (!Object.HasStateAuthority)
+            return;
+
+        ReleaseHeld(Vector3.zero, thrown: false);
+    }
+
+    /// <summary>나를 든 홀더에게서 강제로 풀려남. 홀더가 없으면 스스로 놓인 상태로 전환.</summary>
+    private void ReleaseFromHolder()
+    {
+        if (HeldById.IsValid && Runner.TryFindObject(HeldById, out var holderObject) &&
+            holderObject.TryGetComponent<Player>(out var holder))
+        {
+            holder.DropHeld();
+        }
+
+        if (IsHeldNet)
+            OnReleased();
+    }
+
+    /// <summary>날아가는 중 한 틱: 휠 carry → 중력만 받는 탄도 이동 → 착지 시 해제.</summary>
+    private void SimulateLaunched()
+    {
+        ApplyWheelCarry();
+
+        if (_unityCc != null && _unityCc.enabled)
+        {
+            float dt = Runner.DeltaTime;
+            var velocity = _cc.Velocity;
+            velocity.y += _cc.gravity * dt;
+
+            var previousPosition = transform.position;
+            _unityCc.Move(velocity * dt);
+
+            // NCC.Move와 같은 규칙: 실제 이동량으로 속도를 갱신해 벽에 막히면 그 성분이 사라짐
+            _cc.Velocity = (transform.position - previousPosition) * Runner.TickRate;
+            _cc.Grounded = _unityCc.isGrounded;
+        }
+
+        if (_cc.Grounded && _launchGraceTimer.ExpiredOrNotRunning(Runner))
+        {
+            IsLaunched = false;
+            _launchGraceTimer = TickTimer.None;
+        }
+
+        if (_carrier != null)
+            _carrier.EndTick(transform.position);
+
+        if (_weightSource != null)
+            _weightSource.SetSimulatedPosition(transform.position);
+
+        SyncGroundedNet();
+        SyncPlatformRideState();
+    }
+
     public override void Render()
     {
         SyncHeldControllerAndCollision();
@@ -486,6 +585,7 @@ public class Player : NetworkBehaviour, IHoldable
 
         IsStamping = false;
         EndStampWeight();
+        IsLaunched = false;
         IsHeldNet = true;
         HeldById = holder.Id;
 

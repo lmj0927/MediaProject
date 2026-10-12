@@ -40,6 +40,10 @@ public class WheelRider : MonoBehaviour
 
     [SerializeField] private LayerMask groundMask = ~0;
 
+    [Tooltip("던지기/폭발 비행 중 위로 이 속도(m/s)보다 빠르면 판에 닿아 있어도 착지로 보지 않음.\n" +
+             "판 위에서 바로 날릴 때 발사 틱에 착지 처리되어 수평 속도가 판 속도로 덮이는 것을 막음.")]
+    [SerializeField] private float thrownLandMaxUpSpeed = 1f;
+
     private static readonly List<PlatformTilt> platforms = new();
     private static readonly Dictionary<PlatformTilt, Rigidbody> platformBodies = new();
     private static readonly RaycastHit[] probeHits = new RaycastHit[8];
@@ -226,7 +230,9 @@ public class WheelRider : MonoBehaviour
 
         if (thrownFlight)
         {
-            if (IsOnPlatform && FindContainingPlatform(BodyPosition) != null)
+            if (IsOnPlatform &&
+                body.linearVelocity.y <= thrownLandMaxUpSpeed &&
+                FindContainingPlatform(BodyPosition) != null)
             {
                 thrownFlight = false;
                 ClearCarry();
