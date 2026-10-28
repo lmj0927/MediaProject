@@ -14,11 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WheelSystem.WheelConfig
   maxOffsetRadius: 3
   maxTiltAngle: 10
-  tiltResponsiveness: 2
-  maxAngularSpeed: 5
-  torqueGain: 1
+  tiltResponsiveness: 4
+  maxAngularSpeed: 3
+  torqueGain: 5
+  maxSpinSpeed: 20
   idleDamping: 3
-  maxTiltAngularSpeed: 10
+  maxTiltAngularSpeed: 25
   tiltResponseCurve:
     serializedVersion: 2
     m_Curve:
@@ -44,3 +45,9 @@ MonoBehaviour:
     m_PostInfinity: 2
     m_RotationOrder: 4
   airControlFactor: 0.15
+  stampKickSpeed: 1.2
+  stampRecoverTime: 2.5
+  stampAirFactor: 0.3
+  knockbackRecoverTime: 0.6
+  knockbackControl: 0.1
+  knockbackDrag: 4

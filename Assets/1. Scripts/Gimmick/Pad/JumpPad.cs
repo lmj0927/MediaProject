@@ -77,7 +77,7 @@ public class JumpPad : WheelPadBase
         // 구르는 회전을 새 수평 속도에 맞춤. SphereDriver와 같은 축 규칙을 따름.
         // 수직축 회전(제자리 돌기)은 유지함.
         Vector3 yaw = Vector3.Project(rb.angularVelocity, Vector3.up);
-        rb.angularVelocity = Vector3.Cross(horizontal, Vector3.up) / radius + yaw;
+        rb.angularVelocity = Vector3.Cross(Vector3.up, horizontal) / radius + yaw;
     }
 
 #if UNITY_EDITOR

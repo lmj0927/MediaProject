@@ -46,7 +46,7 @@ public class SpeedBoostPad : WheelPadBase
         // SphereDriver와 같은 축 규칙을 따름. 가속도를 반지름으로 나누면 미끄러짐 없이 구름.
         float radius = SphereRadiusOf(rb);
         if (radius > 0.01f)
-            rb.AddTorque(Vector3.Cross(dir, Vector3.up) * (accel / radius), ForceMode.Acceleration);
+            rb.AddTorque(Vector3.Cross(Vector3.up, dir) * (accel / radius), ForceMode.Acceleration);
     }
 
 #if UNITY_EDITOR

@@ -199,10 +199,11 @@ MonoBehaviour:
   detectionMask:
     serializedVersion: 2
     m_Bits: 4294967295
-  turnGrip: 0.2
-  accelGrip: 1
-  passiveBrakeGrip: 0.25
-  activeBrakeGrip: 0.81
+  contactTolerance: 0.3
+  turnGrip: 0.15
+  accelGrip: 0.6
+  passiveBrakeGrip: 0.1
+  activeBrakeGrip: 0.5
   lowSpeed: 2
   collisionThreshold: 2
   matchSpin: 0

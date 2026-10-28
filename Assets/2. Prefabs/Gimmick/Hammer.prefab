@@ -70,16 +70,17 @@ MonoBehaviour:
   _head: {fileID: 919071589841675840}
   _visualRoot: {fileID: 5400051423823099847}
   _swingAxis: {x: 0, y: 0, z: 1}
-  _amplitude: 100
-  _period: 3
+  _amplitude: 130
+  _period: 4
   _phaseOffset: 0
   _hitRadius: 1
+  _handleRadius: 0.4
   _hitMask:
     serializedVersion: 2
     m_Bits: 4294967295
-  _launchSpeed: 5
-  _launchUpSpeed: 1
-  _hitCooldown: 0.5
+  _launchSpeed: 11
+  _launchUpSpeed: 4.5
+  _hitCooldown: 1
 --- !u!1 &2250030530409672754
 GameObject:
   m_ObjectHideFlags: 0
@@ -129,7 +130,7 @@ CapsuleCollider:
   m_LayerOverridePriority: 0
   m_IsTrigger: 0
   m_ProvidesContacts: 0
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 2
   m_Radius: 4
   m_Height: 14

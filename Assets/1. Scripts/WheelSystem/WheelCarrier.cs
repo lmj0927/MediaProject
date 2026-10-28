@@ -57,7 +57,8 @@ public class WheelCarrier : MonoBehaviour
     [Tooltip("발보다 이만큼 위에서부터 검사함. 판이 발을 파고든 상태도 서 있는 것으로 잡기 위함.")]
     [SerializeField] private float supportLift = 0.3f;
 
-    [Tooltip("한 틱에 판에서 이보다 많이 멀어지면 떠오르는 중으로 보고 서 있지 않은 것으로 봄. 점프 직후 재점프 방지.")]
+    [Tooltip("한 틱에 스스로 이보다 많이 떠오르면 서 있지 않은 것으로 봄. 점프 직후 재점프 방지.\n" +
+             "판에 실려 간 이동량은 빼고 셈. 엘리베이터 등으로 판이 고르지 않게 움직여도 오판하지 않음.")]
     [SerializeField] private float supportRiseTolerance = 0.04f;
 
     [Tooltip("발밑 검사 레이어.")]
@@ -79,6 +80,10 @@ public class WheelCarrier : MonoBehaviour
     private float lastSupportGap;
     private bool hasLastSupportGap;
 
+    // 판에 실려 간 뒤 있어야 할 위치. 최종 위치와의 차이가 스스로 움직인 양임.
+    private Vector3 carriedPosition;
+    private bool hasCarriedPosition;
+
     /// <summary>현재 실려 가고 있는 판. 없으면 null.</summary>
     public PlatformTilt CurrentPlatform { get; private set; }
 
@@ -87,6 +92,13 @@ public class WheelCarrier : MonoBehaviour
     /// 판이 움직이는 중에도 끊기지 않으므로 점프 조건과 애니 착지에 씀.
     /// </summary>
     public bool IsStandingOnDeck { get; private set; }
+
+    /// <summary>
+    /// 직전 GetCarryDelta에서 판을 따라 위아래로 옮긴 양. 지면 흡착은 뺀 값.
+    /// 판이 위로 움직이면 물리 스텝에서 판이 이미 발을 파고든 상태로 다음 틱이 시작되므로,
+    /// 이 양은 충돌 없이 옮겨야 CharacterController의 겹침 해소가 섞이지 않음.
+    /// </summary>
+    public float LastLift { get; private set; }
 
     /// <summary>
     /// 이번 틱에 적용할 이동량을 구함. 자체 이동보다 먼저 적용할 것.
@@ -102,6 +114,7 @@ public class WheelCarrier : MonoBehaviour
         if (platform == null)
         {
             hasAnchor = false;
+            LastLift = 0f;
             return Vector3.zero;
         }
 
@@ -128,6 +141,10 @@ public class WheelCarrier : MonoBehaviour
             }
         }
 
+        carriedPosition = position + delta;
+        hasCarriedPosition = true;
+        LastLift = delta.y;
+
         if (grounded && snapToGround && groundSnapDistance > 0f)
             delta.y -= groundSnapDistance;
 
@@ -142,6 +159,9 @@ public class WheelCarrier : MonoBehaviour
     {
         lastFinalPosition = finalPosition;
 
+        float ownRise = hasCarriedPosition ? finalPosition.y - carriedPosition.y : 0f;
+        hasCarriedPosition = false;
+
         if (CurrentPlatform == null ||
             !GetDeckPose(CurrentPlatform, out Vector3 deckPosition, out Quaternion deckRotation))
         {
@@ -155,15 +175,16 @@ public class WheelCarrier : MonoBehaviour
         anchorPlatformPosition = deckPosition;
         hasAnchor = true;
 
-        UpdateDeckSupport();
+        UpdateDeckSupport(ownRise);
     }
 
     /// <summary>
     /// 발밑을 직접 검사해 판 위에 서 있는지 판정함.
     /// 발보다 조금 위에서 쏘아 판이 발을 파고든 상태도 잡음.
-    /// 판에서 멀어지는 중이면 서 있지 않은 것으로 봄.
+    /// 스스로 떠오르는 중(점프 직후)이면 서 있지 않은 것으로 봄.
+    /// 판과의 간격 변화로 보지 않음. 판이 한 틱 늦게 따라오는 만큼 간격이 출렁여 엘리베이터에서 오판함.
     /// </summary>
-    private void UpdateDeckSupport()
+    private void UpdateDeckSupport(float ownRise)
     {
         if (characterController == null) characterController = GetComponent<CharacterController>();
 
@@ -201,7 +222,7 @@ public class WheelCarrier : MonoBehaviour
         }
 
         float gap = best - supportLift;
-        bool rising = hasLastSupportGap && gap - lastSupportGap > supportRiseTolerance;
+        bool rising = ownRise > supportRiseTolerance;
 
         IsStandingOnDeck = gap <= supportDistance && !rising;
         lastSupportGap = gap;

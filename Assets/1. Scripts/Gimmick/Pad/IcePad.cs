@@ -140,7 +140,7 @@ public class IcePad : WheelPadBase
 
         Vector3 horizontal = new Vector3(velocity.x, 0f, velocity.z);
         Vector3 yaw = Vector3.Project(rb.angularVelocity, Vector3.up);
-        rb.angularVelocity = Vector3.Cross(horizontal, Vector3.up) / radius + yaw;
+        rb.angularVelocity = Vector3.Cross(Vector3.up, horizontal) / radius + yaw;
     }
 
     /// <summary>얼음을 떠난 대상의 기록을 정리함.</summary>

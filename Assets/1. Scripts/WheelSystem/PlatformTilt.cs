@@ -186,6 +186,9 @@ public class PlatformTilt : NetworkBehaviour, IAfterTick
         return flat.magnitude <= PlatformRadius * radiusScale;
     }
 
+    /// <summary>판이 따라가는 구체.</summary>
+    public Transform Sphere => sphere;
+
     /// <summary>판의 각속도(rad/s). Rider가 표면 속도를 계산할 때 사용함.</summary>
     public Vector3 AngularVelocity => angularVelocity;
 
@@ -279,13 +282,16 @@ public class PlatformTilt : NetworkBehaviour, IAfterTick
     public float NormalizedTilt =>
         config.maxTiltAngle > 0f ? Mathf.Clamp01(TiltAngle / config.maxTiltAngle) : 0f;
 
-    /// <summary>구체가 굴러가야 할 수평 방향. 기울기가 없으면 zero.</summary>
+    /// <summary>
+    /// 구체가 굴러가야 할 수평 방향(판이 낮아진 쪽, 무게가 쏠린 쪽). 기울기가 없으면 zero.
+    /// 법선이 기운 쪽이 낮아진 쪽임.
+    /// </summary>
     public Vector3 DownhillDirection
     {
         get
         {
             Vector3 n = SurfaceNormal;
-            Vector3 downhill = new Vector3(-n.x, 0f, -n.z);
+            Vector3 downhill = new Vector3(n.x, 0f, n.z);
             return downhill.sqrMagnitude > 1e-6f ? downhill.normalized : Vector3.zero;
         }
     }

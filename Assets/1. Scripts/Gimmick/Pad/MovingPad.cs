@@ -71,7 +71,7 @@ public class MovingPad : NetworkBehaviour, IAfterTick
     [Header("Ride")]
     [Tooltip("이동 중 휠이 판 기울기로 굴러가는 것을 억제함. 무게 조종은 약하게 남음.\n" +
              "비활성화시 이동 중에도 평소처럼 굴러가며, 판 중앙에 서지 않으면 발판 밖으로 밀려날 수 있음.")]
-    [SerializeField] private bool holdWhileMoving = true;
+    [SerializeField] private bool holdWhileMoving = false;
 
     [Tooltip("억제 세기(1/s). 클수록 덜 굴러감.\n" +
              "기울기로 굴러가는 속도가 대략 torqueGain / (torqueGain + 이 값) 배로 줄어듦.\n" +
@@ -88,9 +88,10 @@ public class MovingPad : NetworkBehaviour, IAfterTick
     [Min(0f)][SerializeField] private float fallGraceTime = 0.3f;
 
     [Header("Wheel")]
-    [Tooltip("이동 중 휠을 밟은 자리에 고정함. 현재는 쓰지 않는 예비 옵션.\n" +
+    [Tooltip("이동 중 휠을 밟은 자리에 고정함. 발판과 함께 매끄럽게 움직여 위에 탄 캐릭터가 흔들리지 않음.\n" +
+             "비활성화시 휠이 발판 위에서 들썩여, 위아래로 움직이는 발판에서는 탄 캐릭터에 낙하 판정이 남.\n" +
              "활성화시 휠이 물리적으로 떨어질 수 없으므로 returnOnFall이 동작하지 않음.")]
-    [SerializeField] private bool lockWheel = false;
+    [SerializeField] private bool lockWheel = true;
 
     [Header("After Arrival")]
     [Tooltip("도착 후 휠이 내리면 returnDelay 뒤 시작점으로 돌아감. 비활성화시 도착 지점에 머무름.")]
@@ -386,11 +387,16 @@ public class MovingPad : NetworkBehaviour, IAfterTick
 
         padVelocity = dt > 0f ? delta / dt : Vector3.zero;
 
+        // NetworkTransform은 transform을 기준으로 상태를 기록하고 프레임마다 되돌려 놓음.
+        // Rigidbody만 옮기면 transform이 물리 스텝 전까지 옛 위치로 남아, 틱 하나 걸러 이전 위치로 되돌아가며 떨림.
         pad.position = target;
+        pad.transform.position = target;
 
         if (lockedWheel != null)
         {
-            lockedWheel.MovePosition(target + lockedOffset);
+            Vector3 wheelTarget = target + lockedOffset;
+            lockedWheel.position = wheelTarget;
+            lockedWheel.transform.position = wheelTarget;
             return;
         }
 

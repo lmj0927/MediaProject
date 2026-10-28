@@ -18,6 +18,10 @@ public abstract class WheelPadBase : NetworkBehaviour
     [Tooltip("겹침 검사에 쓸 레이어.")]
     [SerializeField] private LayerMask detectionMask = ~0;
 
+    [Tooltip("휠 바닥 접점이 장판 범위를 이만큼(m) 벗어나도 밟은 것으로 봄.\n" +
+             "콜라이더가 넉넉해도 겉보기에 휠이 닿았을 때만 효과가 나게 함.")]
+    [Min(0f)][SerializeField] private float contactTolerance = 0.3f;
+
     private BoxCollider area;
     private readonly Collider[] hits = new Collider[16];
     private readonly HashSet<Rigidbody> affected = new();
@@ -65,6 +69,7 @@ public abstract class WheelPadBase : NetworkBehaviour
             var rb = hits[i].attachedRigidbody;
             if (rb == null || rb.isKinematic || !affected.Add(rb)) continue;
             if (!affectOtherBodies && !rb.TryGetComponent<SphereDriver>(out _)) continue;
+            if (!ContactInside(area, rb, contactTolerance)) continue;
 
             Affect(rb, Runner.DeltaTime);
         }
@@ -80,6 +85,29 @@ public abstract class WheelPadBase : NetworkBehaviour
         center = transform.TransformPoint(area.center);
         halfExtents = Vector3.Scale(area.size, new Vector3(Mathf.Abs(s.x), Mathf.Abs(s.y), Mathf.Abs(s.z))) * 0.5f;
         rotation = transform.rotation;
+    }
+
+    /// <summary>
+    /// 구의 바닥 접점(중심 바로 아래)이 상자 범위 위에 있는지 판단함. 구가 아니면 항상 참.
+    /// 구의 옆면이 상자에 먼저 닿아도, 바닥이 장판 위에 올라서야 효과가 나게 함.
+    /// 높이는 위쪽만 봄. 장판이 바닥보다 조금 떠 있어도 동작하고, 장판 위로 떠오른 구에는 효과가 없음.
+    /// </summary>
+    public static bool ContactInside(BoxCollider box, Rigidbody rb, float tolerance)
+    {
+        if (!rb.TryGetComponent<SphereCollider>(out var sphere)) return true;
+
+        float radius = SphereRadiusOf(rb);
+        if (radius <= 0.01f) return true;
+
+        Vector3 contact = sphere.transform.TransformPoint(sphere.center) - Vector3.up * radius;
+        Vector3 local = box.transform.InverseTransformPoint(contact) - box.center;
+
+        Vector3 s = box.transform.lossyScale;
+        Vector3 half = box.size * 0.5f;
+
+        return Mathf.Abs(local.x) <= half.x + tolerance / Mathf.Max(Mathf.Abs(s.x), 1e-4f)
+            && local.y <= half.y + tolerance / Mathf.Max(Mathf.Abs(s.y), 1e-4f)
+            && Mathf.Abs(local.z) <= half.z + tolerance / Mathf.Max(Mathf.Abs(s.z), 1e-4f);
     }
 
     /// <summary>대상의 SphereCollider 반지름. 구가 아니면 0.</summary>

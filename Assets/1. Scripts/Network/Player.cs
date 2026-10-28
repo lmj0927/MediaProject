@@ -551,6 +551,18 @@ public class Player : NetworkBehaviour, IHoldable, ILaunchable
 
         bool snap = _cc.Grounded && _cc.Velocity.y <= 0f;
         var delta = _carrier.GetCarryDelta(transform.position, _cc.Grounded, snap);
+
+        // 판을 따라 위아래로 옮기는 몫은 충돌 없이 옮김.
+        // 판이 올라가면 지난 물리 스텝에서 이미 발을 파고들어 있어, Move로 밀면 겹침 해소가 섞여 틱마다 출렁임 (엘리베이터 떨림).
+        float lift = _carrier.LastLift;
+        if (Mathf.Abs(lift) > 1e-5f)
+        {
+            _unityCc.enabled = false;
+            transform.position += Vector3.up * lift;
+            _unityCc.enabled = true;
+            delta.y -= lift;
+        }
+
         if (delta.sqrMagnitude > 0f)
             _unityCc.Move(delta);
     }

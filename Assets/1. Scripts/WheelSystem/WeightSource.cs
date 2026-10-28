@@ -50,6 +50,10 @@ public class WeightSource : MonoBehaviour
     [Tooltip("Probe 방식 전용. 검사할 레이어.")]
     [SerializeField] private LayerMask probeMask = ~0;
 
+    [Tooltip("Probe 방식 전용. 다른 대상(사람, 물건)을 밟고 있다고 볼 접촉면의 최소 위쪽 성분.\n" +
+             "옆으로 부딪치거나 몸이 겹친 것은 밟은 것이 아님. 둘이 서로를 밟은 것으로 판정되면 둘 다 판과 끊겨 무게가 빠짐.")]
+    [Range(0f, 1f)][SerializeField] private float minStackNormalY = 0.5f;
+
     private const float ProbeSkin = 0.05f;
 
     private readonly Dictionary<WeightSource, float> neighborExpiry = new();
@@ -64,6 +68,8 @@ public class WeightSource : MonoBehaviour
 
     private float platformExpiry = -1f;
     private float weightMultiplier = 1f;
+    private bool impactPending;
+    private float lastImpactTime = float.NegativeInfinity;
 
     private Vector3 simulatedPosition;
     private float simulatedPositionTime = -1f;
@@ -143,13 +149,28 @@ public class WeightSource : MonoBehaviour
         ExpireStaleLinks();
 
         if (supportOverride != null && supportOverride.isActiveAndEnabled)
-        {
             Link(supportOverride, persistent: false);
-            return;
-        }
-
-        if (UsesProbe)
+        else if (UsesProbe)
             Probe();
+
+        FlushImpact();
+    }
+
+    /// <summary>
+    /// 착지 충격을 판에 전달함. 지지 갱신 직후라 방금 착지한 판이 잡혀 있음.
+    /// 판이 아닌 곳에 착지했으면 버림. 연타 판정용으로 착지 시각은 항상 남김.
+    /// </summary>
+    private void FlushImpact()
+    {
+        if (!impactPending) return;
+        impactPending = false;
+
+        float now = SimTime;
+        float sinceLast = now - lastImpactTime;
+        lastImpactTime = now;
+
+        if (DirectPlatform != null && Contributes)
+            DirectPlatform.ApplyImpact(this, sinceLast);
     }
 
     public void SetWeight(float value)
@@ -158,9 +179,14 @@ public class WeightSource : MonoBehaviour
         useRigidbodyMass = false;
     }
 
+    /// <summary>
+    /// 무게 배율. 1보다 크게 올라가는 순간을 착지 충격(내려찍기)으로 보고 다음 지지 갱신 때 판에 알림.
+    /// </summary>
     public void SetWeightMultiplier(float value)
     {
-        weightMultiplier = Mathf.Max(0f, value);
+        value = Mathf.Max(0f, value);
+        if (value > 1f && value > weightMultiplier) impactPending = true;
+        weightMultiplier = value;
     }
 
     public float WeightMultiplier => weightMultiplier;
@@ -241,36 +267,47 @@ public class WeightSource : MonoBehaviour
         int count = Physics.SphereCastNonAlloc(
             origin, radius, Vector3.down, probeHits, distance, probeMask, QueryTriggerInteraction.Ignore);
 
-        Collider best = null;
-        float bestDistance = float.PositiveInfinity;
+        // 판이 잡히면 판이 우선. 다른 대상은 발 아래 윗면을 밟았을 때만 받침으로 봄.
+        CenterOfMassSolver platformHit = null;
+        float platformDistance = float.PositiveInfinity;
+        WeightSource stackHit = null;
+        float stackDistance = float.PositiveInfinity;
+        float groundDistance = float.PositiveInfinity;
 
         for (int i = 0; i < count; i++)
         {
-            var col = probeHits[i].collider;
+            var hit = probeHits[i];
+            var col = hit.collider;
             if (col == null || col.transform.IsChildOf(transform)) continue;
 
-            var carried = col.GetComponentInParent<WeightSource>();
-            if (carried != null && carried.supportOverride == this) continue;
-
-            if (probeHits[i].distance < bestDistance)
+            var solver = col.GetComponentInParent<CenterOfMassSolver>();
+            if (solver != null)
             {
-                bestDistance = probeHits[i].distance;
-                best = col;
+                if (hit.distance < platformDistance) { platformDistance = hit.distance; platformHit = solver; }
+                continue;
             }
+
+            var other = col.GetComponentInParent<WeightSource>();
+            if (other != null)
+            {
+                if (other == this || other.supportOverride == this) continue;
+                // 시작부터 겹친 경우(distance 0)나 옆면 접촉은 밟은 것이 아님
+                if (hit.distance <= 0f || hit.normal.y < minStackNormalY) continue;
+                if (hit.distance < stackDistance) { stackDistance = hit.distance; stackHit = other; }
+                continue;
+            }
+
+            groundDistance = Mathf.Min(groundDistance, hit.distance);
         }
 
-        if (best == null) return;
-
-        var solver = best.GetComponentInParent<CenterOfMassSolver>();
-        if (solver != null)
+        if (platformHit != null)
         {
-            SetPlatform(solver, persistent: false);
+            SetPlatform(platformHit, persistent: false);
             return;
         }
 
-        var other = best.GetComponentInParent<WeightSource>();
-        if (other != null && other != this)
-            Link(other, persistent: false);
+        if (stackHit != null && stackDistance <= groundDistance)
+            Link(stackHit, persistent: false);
     }
 
     private void GetProbeShape(out Vector3 origin, out float radius, out float distance)
