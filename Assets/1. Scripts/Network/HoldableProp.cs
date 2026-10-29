@@ -5,7 +5,7 @@ using UnityEngine;
 /// 네트워크 상자 등 잡기 가능한 Prop.
 /// free: Host WheelRider(판 목표 포즈 기반 속도 carry) + NetPosition.
 /// Host 시각: _visualRoot(메시 자식)만 틱 사이 보간 — 루트 RB는 건드리지 않음.
-/// Client 시각: RidingPlatform일 때 판 로컬 LateUpdate (parent 없음).
+/// Client 시각: 스냅샷(from/to) 보간한 Net 포즈 / 판 로컬 좌표. RidingPlatform이면 판 Render 포즈 + 로컬로 LateUpdate (parent 없음).
 /// held: HoldPoint 스냅. NetworkTransform 없음.
 /// _despawnBelowY 아래로 떨어지면 Host가 Despawn.
 /// </summary>
@@ -38,6 +38,17 @@ public class HoldableProp : NetworkBehaviour, IHoldable, ILaunchable, IAfterTick
     private WheelRider _wheelRider;
     private WeightSource _weightSource;
 
+    private PropertyReader<Vector3> _netPositionReader;
+    private PropertyReader<Quaternion> _netRotationReader;
+    private PropertyReader<NetworkBool> _ridingReader;
+    private PropertyReader<NetworkId> _platformIdReader;
+    private PropertyReader<Vector3> _platformLocalReader;
+
+    // Client Render에서 샘플한 표시 포즈 (LateUpdate 판 보정이 같은 값을 씀)
+    private bool _renderRiding;
+    private NetworkId _renderPlatformId;
+    private Vector3 _renderLocal;
+
     [Networked] private NetworkBool IsHeldNet { get; set; }
     [Networked] private NetworkId HeldById { get; set; }
 
@@ -51,6 +62,7 @@ public class HoldableProp : NetworkBehaviour, IHoldable, ILaunchable, IAfterTick
     [Networked] private Vector3 PlatformLocalPosition { get; set; }
 
     public bool CanBeHeld => !IsHeldNet;
+    public bool IsHeld => IsHeldNet;
 
     private void Awake()
     {
@@ -66,6 +78,12 @@ public class HoldableProp : NetworkBehaviour, IHoldable, ILaunchable, IAfterTick
         NetPosition = transform.position;
         NetRotation = transform.rotation;
         SyncHolderCollisionIgnore(canWriteState: true);
+
+        _netPositionReader = GetPropertyReader<Vector3>(nameof(NetPosition));
+        _netRotationReader = GetPropertyReader<Quaternion>(nameof(NetRotation));
+        _ridingReader = GetPropertyReader<NetworkBool>(nameof(RidingPlatform));
+        _platformIdReader = GetPropertyReader<NetworkId>(nameof(PlatformObjectId));
+        _platformLocalReader = GetPropertyReader<Vector3>(nameof(PlatformLocalPosition));
     }
 
     public override void Despawned(NetworkRunner runner, bool hasState)
@@ -123,12 +141,62 @@ public class HoldableProp : NetworkBehaviour, IHoldable, ILaunchable, IAfterTick
     {
         SyncHolderCollisionIgnore(canWriteState: false);
 
-        if (IsHeldNet)
+        // Host RB는 FUN delta만. Client만 보간 포즈 적용 (판 위면 위치는 LateUpdate 판 보정).
+        if (IsHeldNet || Object.HasStateAuthority)
             return;
 
-        // Host RB는 FUN delta만. Client만 판 로컬 시각 보정 (Player와 동일 패턴).
-        if (!Object.HasStateAuthority && !RidingPlatform)
-            transform.SetPositionAndRotation(NetPosition, NetRotation);
+        SampleClientPose(out var position, out var rotation);
+        if (_renderRiding)
+            transform.rotation = rotation;
+        else
+            transform.SetPositionAndRotation(position, rotation);
+    }
+
+    /// <summary>
+    /// Client 표시용 포즈를 from/to 스냅샷 사이에서 보간 (구체 NT·판 Render와 같은 시간대).
+    /// 판 탑승이 끊기거나 판이 바뀐 구간은 로컬 좌표를 보간하지 않고 to 값을 씀.
+    /// 스냅샷이 없으면 최신 복제 값.
+    /// </summary>
+    private void SampleClientPose(out Vector3 position, out Quaternion rotation)
+    {
+        position = NetPosition;
+        rotation = NetRotation;
+        _renderRiding = RidingPlatform;
+        _renderPlatformId = PlatformObjectId;
+        _renderLocal = PlatformLocalPosition;
+
+        if (!TryGetSnapshotsBuffers(out var from, out var to, out float alpha))
+            return;
+
+        var (fromPosition, toPosition) = _netPositionReader.Read(from, to);
+        var (fromRotation, toRotation) = _netRotationReader.Read(from, to);
+        var (fromRiding, toRiding) = _ridingReader.Read(from, to);
+        var (fromPlatform, toPlatform) = _platformIdReader.Read(from, to);
+        var (fromLocal, toLocal) = _platformLocalReader.Read(from, to);
+
+        position = LerpOrSnap(fromPosition, toPosition, alpha);
+        rotation = SlerpOrSnap(fromRotation, toRotation, alpha);
+
+        _renderRiding = toRiding;
+        _renderPlatformId = toPlatform;
+        _renderLocal = fromRiding && toRiding && fromPlatform == toPlatform
+            ? LerpOrSnap(fromLocal, toLocal, alpha)
+            : toLocal;
+    }
+
+    private Vector3 LerpOrSnap(Vector3 from, Vector3 to, float alpha) =>
+        (to - from).sqrMagnitude > _visualSnapDistance * _visualSnapDistance
+            ? to
+            : Vector3.LerpUnclamped(from, to, alpha);
+
+    /// <summary>초기화 전 스냅샷(0,0,0,0)이 섞이면 Slerp가 NaN이 되므로 to로 끊음.</summary>
+    private static Quaternion SlerpOrSnap(Quaternion from, Quaternion to, float alpha)
+    {
+        if (Quaternion.Dot(from, from) < 0.5f)
+            return to;
+        if (Quaternion.Dot(to, to) < 0.5f)
+            return from;
+        return Quaternion.Slerp(from, to, alpha);
     }
 
     public void SnapVisualToHoldPoint(Transform holdPoint)
@@ -177,23 +245,24 @@ public class HoldableProp : NetworkBehaviour, IHoldable, ILaunchable, IAfterTick
         SnapVisualToHoldPoint(holder.HoldPoint);
     }
 
+    /// <summary>Client: Render에서 샘플한 보간 로컬 좌표를 판 Render 포즈에 붙임.</summary>
     private void ApplyPlatformRenderCorrection()
     {
-        if (!RidingPlatform || !PlatformObjectId.IsValid || Runner == null)
+        if (!_renderRiding || !_renderPlatformId.IsValid || Runner == null)
             return;
 
-        if (!Runner.TryFindObject(PlatformObjectId, out var platformObject))
+        if (!Runner.TryFindObject(_renderPlatformId, out var platformObject))
             return;
 
         if (platformObject.TryGetComponent<PlatformTilt>(out var tilt))
         {
             tilt.GetRenderPose(out var platformPosition, out var platformRotation);
-            transform.position = platformPosition + platformRotation * PlatformLocalPosition;
+            transform.position = platformPosition + platformRotation * _renderLocal;
             return;
         }
 
         var platform = platformObject.transform;
-        transform.position = platform.position + platform.rotation * PlatformLocalPosition;
+        transform.position = platform.position + platform.rotation * _renderLocal;
     }
 
     private void SyncPlatformRideState()

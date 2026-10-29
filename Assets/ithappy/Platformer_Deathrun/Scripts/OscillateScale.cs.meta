@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 32cde6171063c064c8d5fb2b34ec4e4f
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 268271
+  packageName: Platformer Deathrun - Low Poly 3D Models Pack
+  packageVersion: 2.1
+  assetPath: Assets/ithappy/Platformer_Deathrun/Scripts/OscillateScale.cs
+  uploadId: 821412

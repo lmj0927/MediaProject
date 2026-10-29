@@ -65,6 +65,9 @@ public class WheelRider : MonoBehaviour
     /// <summary>던지기 비행. 착지 전까지 carry 없음.</summary>
     private bool thrownFlight;
 
+    /// <summary>스스로 걷는 수평 속도(몬스터 등). 착지 중에만 판 속도에 더하고, Simulate 한 번에 소비.</summary>
+    private Vector3 selfMoveVelocity;
+
     private bool HasStateAuthority
     {
         get
@@ -201,6 +204,16 @@ public class WheelRider : MonoBehaviour
 
     public void ResetAnchor() => ClearCarry();
 
+    /// <summary>
+    /// 이번 틱 스스로 걷는 수평 속도. Simulate 전에 매 틱 다시 넣어야 함 (한 번 쓰면 0으로 비움).
+    /// 판에 착지해 있을 때만 적용, 공중/던지기 비행 중에는 무시.
+    /// </summary>
+    public void SetSelfMoveVelocity(Vector3 worldVelocity)
+    {
+        worldVelocity.y = 0f;
+        selfMoveVelocity = worldVelocity;
+    }
+
     /// <summary>Client 시각 보정용 판 로컬 위치 (틱 시작 시점, NetPosition과 같은 시점).</summary>
     public bool TryGetRideLocal(out NetworkObject platformObject, out Vector3 localPosition)
     {
@@ -222,6 +235,9 @@ public class WheelRider : MonoBehaviour
     {
         if (body == null)
             body = GetComponent<Rigidbody>();
+        Vector3 selfMove = selfMoveVelocity;
+        selfMoveVelocity = Vector3.zero;
+
         if (body == null || body.isKinematic || deltaTime <= 0f)
             return;
 
@@ -282,8 +298,8 @@ public class WheelRider : MonoBehaviour
             Vector3 surface = (carried - position) / deltaTime;
             surface.y = 0f;
 
-            v.x = surface.x;
-            v.z = surface.z;
+            v.x = surface.x + selfMove.x;
+            v.z = surface.z + selfMove.z;
             SetCarryVelocity(surface);
         }
         else
