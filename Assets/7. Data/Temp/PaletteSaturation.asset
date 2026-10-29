@@ -1,0 +1,51 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ca418945c63d1784188453b758eca704, type: 3}
+  m_Name: PaletteSaturation
+  m_EditorClassIdentifier: Assembly-CSharp-Editor::PaletteSaturation
+  outputFolder: Assets/4. Model/Material/Temp/Palette
+  groups:
+  - name: Terrain
+    source: {fileID: 2800000, guid: 5c1b812b7905f0a45b97938395d00998, type: 3}
+    saturation: 1.25
+    textureProperty: _BaseMap
+    materials:
+    - {fileID: 2100000, guid: c4f6875223110a441b471fb29acebcb7, type: 2}
+  - name: Vegetation
+    source: {fileID: 2800000, guid: 5c1b812b7905f0a45b97938395d00998, type: 3}
+    saturation: 1.25
+    textureProperty: _Albedo_RGB
+    materials:
+    - {fileID: 2100000, guid: 655a67399db4eab40868d578d07c8592, type: 2}
+  - name: Paint
+    source: {fileID: 2800000, guid: 5c1b812b7905f0a45b97938395d00998, type: 3}
+    saturation: 1.12
+    textureProperty: _BaseMap
+    materials:
+    - {fileID: 2100000, guid: 71aacbd2cf808ec4183e3a6a81b5d338, type: 2}
+  - name: WoodRock
+    source: {fileID: 2800000, guid: 5c1b812b7905f0a45b97938395d00998, type: 3}
+    saturation: 1.1
+    textureProperty: _BaseMap
+    materials:
+    - {fileID: 2100000, guid: 38ff335391a3f3a43ac362cd0496fc2b, type: 2}
+    - {fileID: 2100000, guid: 5c59d101eae5763469c9aa0b630867e3, type: 2}
+    - {fileID: 2100000, guid: 24dea4bc9b03af7439b6468769820b98, type: 2}
+    - {fileID: 2100000, guid: 54368c2926cf4ae47a43a5374ef3bb5a, type: 2}
+  - name: Log
+    source: {fileID: 2800000, guid: 01fdba7364eb1c0489aff3c87f7ccd00, type: 3}
+    saturation: 1.1
+    textureProperty: _BaseMap
+    materials:
+    - {fileID: 2100000, guid: 7b02f3a56c8d9064fa5de0f6e0f384af, type: 2}
+    - {fileID: 2100000, guid: 4d3a46e633131c44fbf35231f0dd82a9, type: 2}
+    - {fileID: 2100000, guid: 1d331f5fb4a0283439ae55b21be01fba, type: 2}
