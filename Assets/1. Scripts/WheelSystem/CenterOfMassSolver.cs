@@ -222,6 +222,7 @@ public class CenterOfMassSolver : NetworkBehaviour
         if (ratio <= 0.01f) return;
 
         driver.ApplyStampKick(offset, ratio, sinceLast);
+        if (platform != null) platform.ApplyStampDip(offset, ratio, sinceLast);
     }
 
     /// <summary>외부 시스템이 무게중심을 밀어낼 때 사용.</summary>

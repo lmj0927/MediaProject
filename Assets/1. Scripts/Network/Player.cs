@@ -19,6 +19,7 @@ public class Player : NetworkBehaviour, IHoldable, ILaunchable
     private static readonly int IsHoldingHash = Animator.StringToHash("IsHolding");
     private static readonly int ThrowHash = Animator.StringToHash("Throw");
     private static readonly int StampHash = Animator.StringToHash("Stamp");
+    private static readonly int StampHoldHash = Animator.StringToHash("StampHold");
 
     [Header("Hold")]
     [Tooltip("잡은 물체를 붙일 위치 (없으면 런타임 생성)")]
@@ -44,6 +45,12 @@ public class Player : NetworkBehaviour, IHoldable, ILaunchable
 
     [Tooltip("착지 후 무게 배율을 유지하는 시간(초) (임시 튜닝값)")]
     [SerializeField] private float _stampWeightDuration = 0.3f;
+
+    [Tooltip("Stamp 입력 후 공중에 멈춰 자세를 잡는 시간(초). 내려찍기를 눈으로 알아볼 여유를 줌")]
+    [SerializeField] private float _stampHangTime = 0.18f;
+
+    [Tooltip("Stamp 착지 후 착지 자세를 유지하는 시간(초). 이 동안 이동·점프·잡기 입력을 받지 않음")]
+    [SerializeField] private float _stampRecoverTime = 0.25f;
 
     [Header("Launch")]
     [Tooltip("날아간 직후 이 시간(초) 동안은 착지로 보지 않음. 발사 틱에 바로 착지 판정되는 것을 막음.")]
@@ -81,6 +88,12 @@ public class Player : NetworkBehaviour, IHoldable, ILaunchable
     /// <summary>날아간 뒤 착지 판정을 시작하는 시점. Host SA 전용.</summary>
     private TickTimer _launchGraceTimer;
 
+    /// <summary>Stamp 공중 정지가 끝나는 시점. Host SA 전용.</summary>
+    private TickTimer _stampHangTimer;
+
+    /// <summary>Stamp 착지 자세 유지가 끝나는 시점. Host SA 전용.</summary>
+    private TickTimer _stampRecoverTimer;
+
     /// <summary>점프 성공 시 증가. 원격도 Render에서 Trigger 재생.</summary>
     [Networked] private int JumpCount { get; set; }
 
@@ -92,6 +105,9 @@ public class Player : NetworkBehaviour, IHoldable, ILaunchable
 
     /// <summary>공중 Stamp 중(착지까지). Host 시뮬 상태.</summary>
     [Networked] private NetworkBool IsStamping { get; set; }
+
+    /// <summary>Stamp 착지 직후 자세 유지 중. 애니가 착지 자세에 머무르도록 복제함.</summary>
+    [Networked] private NetworkBool IsStampRecovering { get; set; }
 
     /// <summary>폭발 등으로 날아가는 중(착지까지). 입력과 NCC 감속을 무시.</summary>
     [Networked] private NetworkBool IsLaunched { get; set; }
@@ -217,7 +233,8 @@ public class Player : NetworkBehaviour, IHoldable, ILaunchable
         var pressed = data.buttons.GetPressed(_previousButtons);
         _previousButtons = data.buttons;
 
-        if (pressed.IsSet(PlayerInputButton.Hold))
+        // 착지 자세 유지 중에는 잡기 입력을 막음
+        if (pressed.IsSet(PlayerInputButton.Hold) && !IsStampRecovering)
             HandleHoldPressed();
 
         if (pressed.IsSet(PlayerInputButton.Throw))
@@ -236,20 +253,27 @@ public class Player : NetworkBehaviour, IHoldable, ILaunchable
         if (IsStamping)
         {
             ApplyStampVelocity();
-            _cc.Move(Vector3.zero);
 
-            if (_cc.Grounded)
+            // 공중 정지 중에는 Move를 부르지 않아 중력도 받지 않고 제자리에 머무름
+            if (!IsStampHanging)
             {
-                IsStamping = false;
-                BeginStampWeight();
+                _cc.Move(Vector3.zero);
+
+                if (_cc.Grounded)
+                {
+                    IsStamping = false;
+                    BeginStampWeight();
+                    BeginStampRecover();
+                }
             }
         }
         else
         {
-            var direction = data.direction;
+            bool recovering = UpdateStampRecover();
+            var direction = recovering ? Vector3.zero : data.direction;
             direction.y = 0f;
 
-            if (pressed.IsSet(PlayerInputButton.Jump) && (IsGroundedForGameplay || IsStandingOnDeck))
+            if (!recovering && pressed.IsSet(PlayerInputButton.Jump) && (IsGroundedForGameplay || IsStandingOnDeck))
             {
                 // 착지 판정이 끊긴 동안 쌓인 낙하 속도를 지워 항상 같은 높이로 뜀
                 var velocity = _cc.Velocity;
@@ -320,25 +344,67 @@ public class Player : NetworkBehaviour, IHoldable, ILaunchable
         PlatformObjectId = default;
     }
 
-    /// <summary>Stamp 진입: 수평 속도 제거 + 아래 속도 부여 + 애니 카운트.</summary>
+    /// <summary>Stamp 진입: 공중 정지 시작 + 애니 카운트. 정지가 끝나면 아래로 내려찍음.</summary>
     private void BeginStamp()
     {
         IsStamping = true;
         StampCount++;
+        _stampHangTimer = _stampHangTime > 0f ? TickTimer.CreateFromSeconds(Runner, _stampHangTime) : TickTimer.None;
         ApplyStampVelocity();
     }
 
-    /// <summary>Stamp 동안 수평 정지 + 아래 속도 유지.</summary>
+    /// <summary>Stamp 공중 정지 중인지. 타이머가 돌고 있고 아직 끝나지 않았을 때만 참.</summary>
+    private bool IsStampHanging => _stampHangTimer.IsRunning && !_stampHangTimer.Expired(Runner);
+
+    /// <summary>Stamp 동안 수평 정지. 공중 정지 중엔 멈춰 있고, 끝나면 아래 속도 유지.</summary>
     private void ApplyStampVelocity()
     {
         if (_cc == null)
             return;
+
+        if (IsStampHanging)
+        {
+            _cc.Velocity = Vector3.zero;
+            return;
+        }
 
         var velocity = _cc.Velocity;
         velocity.x = 0f;
         velocity.z = 0f;
         velocity.y = -Mathf.Abs(_stampDownSpeed);
         _cc.Velocity = velocity;
+    }
+
+    /// <summary>Stamp 착지: 착지 자세 유지 시작.</summary>
+    private void BeginStampRecover()
+    {
+        _stampHangTimer = TickTimer.None;
+        if (_stampRecoverTime <= 0f)
+            return;
+
+        IsStampRecovering = true;
+        _stampRecoverTimer = TickTimer.CreateFromSeconds(Runner, _stampRecoverTime);
+    }
+
+    /// <summary>착지 자세 유지 중이면 참. 시간이 끝났으면 해제함.</summary>
+    private bool UpdateStampRecover()
+    {
+        if (!IsStampRecovering)
+            return false;
+
+        if (!_stampRecoverTimer.ExpiredOrNotRunning(Runner))
+            return true;
+
+        EndStampRecover();
+        return false;
+    }
+
+    /// <summary>Stamp 공중 정지·착지 자세를 모두 끊음. 날아가거나 들릴 때 사용.</summary>
+    private void EndStampRecover()
+    {
+        IsStampRecovering = false;
+        _stampRecoverTimer = TickTimer.None;
+        _stampHangTimer = TickTimer.None;
     }
 
     /// <summary>
@@ -385,6 +451,7 @@ public class Player : NetworkBehaviour, IHoldable, ILaunchable
 
         IsStamping = false;
         EndStampWeight();
+        EndStampRecover();
 
         _cc.Velocity = worldVelocity;
         IsLaunched = true;
@@ -610,6 +677,7 @@ public class Player : NetworkBehaviour, IHoldable, ILaunchable
 
         IsStamping = false;
         EndStampWeight();
+        EndStampRecover();
         IsLaunched = false;
         IsHeldNet = true;
         HeldById = holder.Id;
@@ -837,6 +905,7 @@ public class Player : NetworkBehaviour, IHoldable, ILaunchable
         velocity.y = 0f;
         _animator.SetFloat(SpeedHash, velocity.magnitude);
         _animator.SetBool(GroundedHash, GroundedNet);
+        _animator.SetBool(StampHoldHash, IsStampRecovering);
 
         var throwFired = ThrowCount != _shownThrowCount;
         if (throwFired)

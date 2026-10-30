@@ -75,6 +75,16 @@ public class WheelConfig : ScriptableObject
     [Tooltip("휠이 공중에 있을 때 내려찍기 속도 배율.")]
     [Range(0f, 1f)] public float stampAirFactor = 0.3f;
 
+    [Tooltip("판 가장자리에서 내려찍었을 때 판이 찍은 쪽으로 바로 눌리는 각도(도).\n" +
+                "무게(기울기)가 따라오기 전에 판이 먼저 꺼져서 찍은 순간 반응이 보임. 중심에서 멀수록 커지고 정중앙이면 0. 0이면 사용 안 함.")]
+    [Min(0f)] public float stampDipAngle = 3f;
+
+    [Tooltip("눌리는 속도(도/초). 클수록 찍는 순간 판이 확 꺼짐. 너무 크면 판 위 물체가 튈 수 있음.")]
+    [Min(1f)] public float stampDipSpeed = 40f;
+
+    [Tooltip("다 눌린 뒤 원래대로 돌아오는 속도(도/초).")]
+    [Min(0.1f)] public float stampDipReturnSpeed = 10f;
+
     // ─────────────────────────────────────────────
     // 강한 충격(해머 등)
     // ─────────────────────────────────────────────
@@ -100,6 +110,9 @@ public class WheelConfig : ScriptableObject
         maxTiltAngularSpeed = Mathf.Max(0f, maxTiltAngularSpeed);
         stampKickSpeed = Mathf.Max(0f, stampKickSpeed);
         stampRecoverTime = Mathf.Max(0f, stampRecoverTime);
+        stampDipAngle = Mathf.Max(0f, stampDipAngle);
+        stampDipSpeed = Mathf.Max(1f, stampDipSpeed);
+        stampDipReturnSpeed = Mathf.Max(0.1f, stampDipReturnSpeed);
         knockbackRecoverTime = Mathf.Max(0f, knockbackRecoverTime);
         knockbackDrag = Mathf.Max(0f, knockbackDrag);
         maxSpinSpeed = Mathf.Max(0.1f, maxSpinSpeed);

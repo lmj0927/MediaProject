@@ -201,7 +201,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b6e03129ce3ab4e46a3ad3dc3aa02388, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WeightSource
-  weight: 1
+  weight: 2
   useRigidbodyMass: 0
   measurePoint: {fileID: 4936936546399741456}
   contributes: 1
@@ -212,6 +212,7 @@ MonoBehaviour:
   probeMask:
     serializedVersion: 2
     m_Bits: 4294967295
+  minStackNormalY: 0.5
 --- !u!114 &2957197262758848714
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -250,10 +251,9 @@ MonoBehaviour:
   _moveSpeed: 1.5
   _turnSpeed: 540
   _wanderRadiusScale: 0.7
-  _minTargetDistance: 1
-  _arriveDistance: 0.3
-  _idleSecondsRange: {x: 1, y: 3}
-  _maxMoveSeconds: 5
+  _minPathDistance: 1
+  _curveBulge: 0.55
+  _maxPathSeconds: 8
   _landPauseSeconds: 0.5
 --- !u!136 &3158976503363653729
 CapsuleCollider:

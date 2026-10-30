@@ -175,6 +175,39 @@ public class BalanceTestRig : NetworkBehaviour, IAfterTick
     [Tooltip("빙판 가장자리에서 이만큼(m) 안쪽에만 목표를 둠.")]
     [Min(0f)][SerializeField] private float iceChaseEdgeMargin = 20f;
 
+    [Header("Team Stamp")]
+    [Tooltip("팀이 전술적으로 내려찍기를 씀. 가야 할 속도와 실제 속도 차이가 클 때, 기울일 방향 쪽 가장자리의 더미가 찍음.\n" +
+             "해머 대기·출발 중에는 쓰지 않음(출발 시점 계산이 내려찍기 없이 잰 값이라 어긋남).")]
+    [SerializeField] private bool teamStamps = true;
+
+    [Tooltip("가야 할 속도와 실제 속도의 차이(m/s)가 이 값을 넘을 때만 찍음. 급가속·급제동·급선회 상황.")]
+    [Min(0f)][SerializeField] private float teamStampError = 3f;
+
+    [Tooltip("판 중심에서 기울일 방향으로 판 반경의 이 비율 이상 나가 있는 더미만 찍음. 중심 근처에서 찍으면 효과가 없음.")]
+    [Range(0f, 1f)][SerializeField] private float teamStampReach = 0.45f;
+
+    [Tooltip("팀 안에서 다음 사람이 찍기까지 최소 간격(초).")]
+    [Min(0f)][SerializeField] private float teamStampInterval = 0.8f;
+
+    [Tooltip("같은 더미가 다시 찍기까지 최소 간격(초). 휠 설정의 연타 방지 시간과 맞추면 매번 최대 효과.")]
+    [Min(0f)][SerializeField] private float teamStampCooldown = 2.5f;
+
+    [Header("Monster")]
+    [Tooltip("판 위 몬스터를 더미가 잡아서 판 밖으로 던짐. 끄면 몬스터를 내버려 둠.")]
+    [SerializeField] private bool handleMonsters = true;
+
+    [Tooltip("몬스터가 판에 오른 뒤 이 시간(초)이 지나야 잡으러 감. 그동안은 몬스터 영향을 그대로 받음.")]
+    [Min(0f)][SerializeField] private float monsterGrabDelay = 20f;
+
+    [Tooltip("몬스터와 이 거리(m) 안이면 잡기를 시도함. 실제 잡기 반경(1.2m)보다 조금 작게 둠.")]
+    [Min(0.1f)][SerializeField] private float monsterGrabReach = 0.9f;
+
+    [Tooltip("잡은 몬스터를 판 반경의 이 비율 지점까지 들고 가서 바깥쪽으로 던짐.")]
+    [Range(0.3f, 0.95f)][SerializeField] private float monsterThrowEdge = 0.85f;
+
+    [Tooltip("잡으러 가거나 들고 가는 데 이 시간(초)을 넘기면 포기하고 다시 고름.")]
+    [Min(1f)][SerializeField] private float monsterGiveUpTime = 12f;
+
     [Header("Stamp")]
     [Tooltip("자동 내려찍기 사이의 대기 시간 범위(초). 착지 후 다음 점프까지.")]
     [SerializeField] private Vector2 autoStampDelay = new Vector2(0.15f, 0.4f);
@@ -196,10 +229,13 @@ public class BalanceTestRig : NetworkBehaviour, IAfterTick
         public bool jumpRequested;
         public float nextDecision;
 
-        // 내려찍기: 0 없음, 1 점프 대기, 2 상승 중, 3 내리꽂는 중
+        // 내려찍기: 0 없음, 1 점프 대기, 2 상승 중, 3 공중 정지, 4 내리꽂는 중
         public int stampPhase;
         public float stampPhaseTime;
         public float stampWeightEnd = -1f;
+        public float stampRecoverEnd = -1f;
+        public float lastTeamStamp = -100f;
+        public bool stampHanging;
         public bool autoStamp;
         public float nextAutoStamp;
 
@@ -527,6 +563,21 @@ public class BalanceTestRig : NetworkBehaviour, IAfterTick
     private static readonly System.Reflection.BindingFlags PrivateField =
         System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
 
+    /// <summary>Player의 비공개 복제 상태를 씀. 더미 애니가 실제 플레이어와 같게 보이도록 함.</summary>
+    private static void SetPlayerState(Player player, string property, object value)
+    {
+        if (player == null) return;
+        typeof(Player).GetProperty(property, System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.SetValue(player, value);
+    }
+
+    /// <summary>더미 Stamp 애니 재생. 실제 플레이어처럼 StampCount를 올림.</summary>
+    private static void PlayStampAnimation(Player player)
+    {
+        var info = typeof(Player).GetProperty("StampCount", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        if (player == null || info == null) return;
+        info.SetValue(player, (int)info.GetValue(player) + 1);
+    }
+
     /// <summary>Player의 비공개 튜닝값을 읽음. 못 읽으면 기본값.</summary>
     private static float PlayerValue(Player player, string field, float fallback)
     {
@@ -541,10 +592,19 @@ public class BalanceTestRig : NetworkBehaviour, IAfterTick
     /// </summary>
     private bool UpdateStamp(Dummy d, float now, bool nearTarget)
     {
+        d.stampHanging = false;
         if (d.stampWeightEnd >= 0f && now >= d.stampWeightEnd)
         {
             if (d.source != null) d.source.SetWeightMultiplier(1f);
             d.stampWeightEnd = -1f;
+        }
+
+        // 착지 자세 유지 중에는 움직이지 않음 (실제 Player와 같음)
+        if (d.stampRecoverEnd >= 0f)
+        {
+            if (now < d.stampRecoverEnd) return true;
+            d.stampRecoverEnd = -1f;
+            SetPlayerState(d.player, "IsStampRecovering", (NetworkBool)false);
         }
 
         if (d.stampPhase == 0 && d.autoStamp && nearTarget && d.cc.Grounded && now >= d.nextAutoStamp)
@@ -563,10 +623,21 @@ public class BalanceTestRig : NetworkBehaviour, IAfterTick
             case 2:
                 // 정점 근처에서 내리꽂기 시작. 점프가 안 됐으면 포기함.
                 if (now - d.stampPhaseTime > 1.5f) { SetStampPhase(d, 0); return false; }
-                if (!d.cc.Grounded && d.cc.Velocity.y <= 1f) SetStampPhase(d, 3);
+                if (!d.cc.Grounded && d.cc.Velocity.y <= 1f) { SetStampPhase(d, 3); PlayStampAnimation(d.player); }
                 return true;
 
             case 3:
+                // 공중 정지: 속도를 지우고 이동(중력)을 건너뜀
+                if (now - d.stampPhaseTime < PlayerValue(d.player, "_stampHangTime", 0f))
+                {
+                    d.cc.Velocity = Vector3.zero;
+                    d.stampHanging = true;
+                    return true;
+                }
+                SetStampPhase(d, 4);
+                goto case 4;
+
+            case 4:
                 if (now - d.stampPhaseTime > 2f) { SetStampPhase(d, 0); return false; }
                 d.cc.Velocity = new Vector3(0f, -PlayerValue(d.player, "_stampDownSpeed", 25f), 0f);
                 return true;
@@ -577,10 +648,16 @@ public class BalanceTestRig : NetworkBehaviour, IAfterTick
     /// <summary>내리꽂는 중 착지했으면 무게 배율을 걺. Move 뒤에 호출.</summary>
     private void CheckStampLanding(Dummy d, float now)
     {
-        if (d.stampPhase != 3 || !d.cc.Grounded) return;
+        if (d.stampPhase != 4 || !d.cc.Grounded) return;
 
         SetStampPhase(d, 0);
-        d.nextAutoStamp = now + Random.Range(autoStampDelay.x, autoStampDelay.y);
+        float recover = PlayerValue(d.player, "_stampRecoverTime", 0f);
+        if (recover > 0f)
+        {
+            d.stampRecoverEnd = now + recover;
+            SetPlayerState(d.player, "IsStampRecovering", (NetworkBool)true);
+        }
+        d.nextAutoStamp = now + recover + Random.Range(autoStampDelay.x, autoStampDelay.y);
         stampsThisTick++;
         stampTotal++;
 
@@ -648,6 +725,7 @@ public class BalanceTestRig : NetworkBehaviour, IAfterTick
         if (resetRequested) ApplyReset();
         if (calibrationPhase >= 0) UpdateCalibration();
         else if (strategyActive) UpdateStrategy();
+        if (handleMonsters) UpdateMonsters();
         DriveDummies();
     }
 
@@ -695,7 +773,7 @@ public class BalanceTestRig : NetworkBehaviour, IAfterTick
                 d.jumpRequested = false;
             }
 
-            d.cc.Move(direction);
+            if (!d.stampHanging) d.cc.Move(direction);
             CheckStampLanding(d, now);
 
             position = d.obj.transform.position;
@@ -829,7 +907,9 @@ public class BalanceTestRig : NetworkBehaviour, IAfterTick
 
         if ((distance < waypointRadius || passed) && (!last || velocity.magnitude < 1f))
         {
-            strategyReport.AppendLine($"웨이포인트 {waypointIndex + 1} 도착: {now - legStartTime:F1}초, 통과 속도 {velocity.magnitude:F1}m/s, 거리 오차 {distance:F1}m");
+            strategyReport.AppendLine($"웨이포인트 {waypointIndex + 1} 도착: {now - legStartTime:F1}초, 통과 속도 {velocity.magnitude:F1}m/s, 거리 오차 {distance:F1}m" +
+                                      (teamStamps ? $", 팀 내려찍기 {legTeamStamps}회" : ""));
+            legTeamStamps = 0;
             legStartTime = now;
 
             if (last)
@@ -887,6 +967,8 @@ public class BalanceTestRig : NetworkBehaviour, IAfterTick
         plannedLean = Vector3.ClampMagnitude(lean, 1f) * (DeckRadius * 0.8f);
         plannedDirection = distance > 0.01f ? toGoal / distance : Vector3.forward;
 
+        if (teamStamps) UpdateTeamStamp(now, error);
+
         if (trollIndex >= 0 && now >= nextTacticTime) ChangeTrollTactic(now);
 
         // 트롤을 뺀 인원으로 줄을 섬
@@ -914,6 +996,223 @@ public class BalanceTestRig : NetworkBehaviour, IAfterTick
             }
             MoveDummy(i, spot.x, spot.y);
         }
+    }
+
+    // ---- 팀 내려찍기 ----
+
+    private float nextTeamStamp;
+    private int legTeamStamps;
+
+    /// <summary>
+    /// 팀의 전술 내려찍기. 가야 할 속도와 실제 속도 차이(error)가 크면 그 방향 쪽 가장자리에 선 더미 한 명이 찍음.
+    /// 찍은 쪽으로 무게 배율·판 눌림·휠 반동이 들어가므로 가속, 제동, 방향 전환을 모두 앞당김.
+    /// 실제 Player와 같은 흐름(점프 → 정점 근처에서 찍기)을 그대로 씀.
+    /// </summary>
+    private void UpdateTeamStamp(float now, Vector3 error)
+    {
+        if (now < nextTeamStamp || error.magnitude < teamStampError) return;
+
+        Vector3 want = error.normalized;
+        Vector3 center = platformBody.position;
+        float reach = DeckRadius * teamStampReach;
+
+        int best = -1;
+        float bestAlong = reach;
+        for (int i = 0; i < dummies.Count; i++)
+        {
+            var d = dummies[i];
+            if (i == trollIndex || i == hunterIndex || !d.IsValid || d.stampPhase != 0 || d.stampRecoverEnd >= 0f) continue;
+            if (!d.cc.Grounded || now - d.lastTeamStamp < teamStampCooldown || d.player == null || d.player.IsHolding) continue;
+            Vector3 offset = d.obj.transform.position - center;
+            offset.y = 0f;
+            float along = Vector3.Dot(offset, want);
+            // 옆으로 많이 비껴 선 더미는 엉뚱한 방향으로 밀게 되므로 뺌
+            if (along < bestAlong || offset.sqrMagnitude < 1e-4f || along / offset.magnitude < 0.7f) continue;
+            bestAlong = along;
+            best = i;
+        }
+        if (best < 0) return;
+
+        dummies[best].lastTeamStamp = now;
+        SetStampPhase(dummies[best], 1);
+        nextTeamStamp = now + teamStampInterval;
+        legTeamStamps++;
+    }
+
+    // ---- 몬스터 처리 ----
+
+    private readonly Dictionary<Monster, float> monsterOnDeckSince = new();
+    private readonly StringBuilder monsterReport = new();
+    private Monster[] monsterCache = new Monster[0];
+    private float monsterCacheTime = -1f;
+
+    // 몬스터 담당 더미: 0 없음, 1 잡으러 감, 2 들고 가장자리로 감
+    private int hunterIndex = -1;
+    private int hunterPhase;
+    private float hunterPhaseTime;
+    private Monster hunterTarget;
+    private float hunterTargetSince;
+    private Vector2 hunterThrowSpot;
+
+    /// <summary>몬스터 처리 기록. 잡은 시점, 던진 시점.</summary>
+    public string MonsterReport => monsterReport.ToString();
+
+    /// <summary>
+    /// 판 위에 monsterGrabDelay초 넘게 있던 몬스터를 가장 가까운 더미(트롤 제외)가 잡아서 가장자리에서 바깥으로 던짐.
+    /// 실제 Player의 잡기·던지기 함수를 그대로 불러서 무게 이동, 애니, 던지는 힘이 실제와 같음.
+    /// 나머지 더미는 평소처럼 판단함. 한 명이 빠진 만큼 기울이는 힘이 약해지는 것까지 그대로 드러남.
+    /// </summary>
+    private void UpdateMonsters()
+    {
+        float now = (float)Runner.SimulationTime;
+        if (now - monsterCacheTime > 0.5f)
+        {
+            monsterCache = FindObjectsByType<Monster>(FindObjectsSortMode.None);
+            monsterCacheTime = now;
+        }
+
+        // 판 위에 오른 시점 기록. 내려가거나 사라지면 지움
+        foreach (var m in monsterCache)
+        {
+            if (m == null || !m.Object || !m.Object.IsValid) continue;
+            bool onDeck = m.TryGetComponent<WheelRider>(out var rider) && rider.IsOnPlatform && rider.CurrentPlatform == platform;
+            if (onDeck) { if (!monsterOnDeckSince.ContainsKey(m)) monsterOnDeckSince[m] = now; }
+            else if (m != hunterTarget) monsterOnDeckSince.Remove(m);
+        }
+        scratchMonsters.Clear();
+        foreach (var m in monsterOnDeckSince.Keys) if (m == null || !m.Object || !m.Object.IsValid) scratchMonsters.Add(m);
+        foreach (var m in scratchMonsters) monsterOnDeckSince.Remove(m);
+
+        if (hunterIndex >= dummies.Count || (hunterIndex >= 0 && !dummies[hunterIndex].IsValid)) EndHunt(now, null);
+        if (hunterIndex < 0) PickHunter(now);
+        if (hunterIndex < 0) return;
+
+        var d = dummies[hunterIndex];
+        d.nextDecision = now + 0.5f; // 팀 판단이 이 더미를 다른 자리로 보내지 않게 막음
+        Vector3 center = platformBody.position;
+
+        if (now - hunterPhaseTime > monsterGiveUpTime) { EndHunt(now, "포기(시간 초과)"); return; }
+
+        if (hunterPhase == 1)
+        {
+            if (hunterTarget == null || !hunterTarget.Object || !hunterTarget.Object.IsValid || !monsterOnDeckSince.ContainsKey(hunterTarget))
+            {
+                EndHunt(now, null);
+                return;
+            }
+
+            Vector3 to = hunterTarget.transform.position - d.obj.transform.position;
+            to.y = 0f;
+            Vector3 offset = hunterTarget.transform.position - center;
+            MoveDummy(hunterIndex, offset.x, offset.z);
+
+            if (to.magnitude <= monsterGrabReach && d.cc.Grounded && d.stampPhase == 0)
+            {
+                CallPlayer(d.player, "HandleHoldPressed");
+                if (d.player.IsHolding)
+                {
+                    // 지금 선 방향 그대로 바깥으로 걸어가면 마지막에 바깥을 보고 서게 됨
+                    Vector3 outward = d.obj.transform.position - center;
+                    outward.y = 0f;
+                    if (outward.magnitude < 0.5f) outward = d.obj.transform.forward;
+                    outward.y = 0f;
+                    outward = outward.sqrMagnitude > 1e-4f ? outward.normalized : Vector3.forward;
+                    float r = DeckRadius * monsterThrowEdge;
+                    hunterThrowSpot = new Vector2(outward.x * r, outward.z * r);
+                    LogMonster($"{d.obj.name}: 몬스터 잡음 (판에 오른 지 {now - hunterTargetSince:F1}초, 잡으러 가는 데 {now - hunterPhaseTime:F1}초)");
+                    hunterPhase = 2;
+                    hunterPhaseTime = now;
+                }
+            }
+            return;
+        }
+
+        // 2: 들고 가장자리로 가서 바깥을 보고 던짐
+        if (!d.player.IsHolding) { EndHunt(now, "놓침"); return; }
+        MoveDummy(hunterIndex, hunterThrowSpot.x, hunterThrowSpot.y);
+
+        Vector3 here = d.obj.transform.position - center;
+        here.y = 0f;
+        Vector3 spot = new Vector3(hunterThrowSpot.x, 0f, hunterThrowSpot.y);
+        Vector3 facing = d.obj.transform.forward;
+        facing.y = 0f;
+        bool arrived = (here - spot).magnitude <= arriveDistance + 0.3f || here.magnitude >= spot.magnitude;
+        bool facingOut = facing.sqrMagnitude > 1e-4f && Vector3.Dot(facing.normalized, spot.normalized) > 0.7f;
+        // 이미 바깥에 서 있는데 안쪽을 보고 있으면 조금 더 바깥으로 걸어가 몸을 돌림
+        if (arrived && !facingOut && spot.sqrMagnitude > 1e-4f)
+        {
+            float r = Mathf.Min(DeckRadius * 0.95f, here.magnitude + 1f);
+            Vector3 outward = spot.normalized;
+            hunterThrowSpot = new Vector2(outward.x * r, outward.z * r);
+        }
+
+        if (arrived && facingOut && d.cc.Grounded)
+        {
+            CallPlayer(d.player, "HandleThrowPressed");
+            EndHunt(now, $"{d.obj.name}: 몬스터 던짐 (판에 오른 지 {now - hunterTargetSince:F1}초)");
+        }
+    }
+
+    private readonly List<Monster> scratchMonsters = new();
+
+    /// <summary>오래 머문 몬스터 중 가장 오래된 것을 고르고, 그 몬스터와 가장 가까운 더미(트롤 제외)를 보냄.</summary>
+    private void PickHunter(float now)
+    {
+        Monster target = null;
+        float since = float.MaxValue;
+        foreach (var pair in monsterOnDeckSince)
+        {
+            if (now - pair.Value < monsterGrabDelay || pair.Value >= since) continue;
+            target = pair.Key;
+            since = pair.Value;
+        }
+        if (target == null) return;
+
+        int best = -1;
+        float bestDistance = float.MaxValue;
+        for (int i = 0; i < dummies.Count; i++)
+        {
+            var d = dummies[i];
+            if (i == trollIndex || !d.IsValid || d.stampPhase != 0 || d.player == null || d.player.IsHolding) continue;
+            if (d.controller == null || !d.controller.enabled || IsLaunched(d.player)) continue;
+            float distance = Vector3.Distance(d.obj.transform.position, target.transform.position);
+            if (distance < bestDistance) { bestDistance = distance; best = i; }
+        }
+        if (best < 0) return;
+
+        hunterIndex = best;
+        hunterTarget = target;
+        hunterTargetSince = since;
+        hunterPhase = 1;
+        hunterPhaseTime = now;
+        dummies[best].autoStamp = false;
+    }
+
+    private void EndHunt(float now, string message)
+    {
+        if (message != null) LogMonster(message);
+        if (hunterIndex >= 0 && hunterIndex < dummies.Count && dummies[hunterIndex].IsValid)
+        {
+            dummies[hunterIndex].nextDecision = now;
+            dummies[hunterIndex].moving = false;
+        }
+        hunterIndex = -1;
+        hunterPhase = 0;
+        hunterTarget = null;
+    }
+
+    private void LogMonster(string message)
+    {
+        monsterReport.AppendLine(message);
+        if (strategyActive) strategyReport.AppendLine(message);
+        Debug.Log($"{name}: {message}", this);
+    }
+
+    /// <summary>Player의 비공개 입력 처리 함수를 부름. 더미는 입력이 없어서 잡기·던지기를 이렇게 대신 실행함.</summary>
+    private static void CallPlayer(Player player, string method)
+    {
+        if (player == null) return;
+        typeof(Player).GetMethod(method, System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.Invoke(player, null);
     }
 
     // ---- 기믹 코스 ----
