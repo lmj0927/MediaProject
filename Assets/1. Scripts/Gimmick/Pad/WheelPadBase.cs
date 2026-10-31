@@ -4,7 +4,7 @@ using UnityEngine;
 
 /// <summary>
 /// 휠에 작용하는 장판의 부모.
-/// Host State Authority의 FixedUpdateNetwork에서 매 틱 겹침 검사로 대상을 찾아 Affect를 호출함/
+/// Host State Authority의 FixedUpdateNetwork에서 매 틱 겹침 검사로 대상을 찾아 Affect를 호출함.
 ///
 /// 물리 본체(이 오브젝트): BoxCollider + 장판 스크립트. 시각(자식): Quad + PadSurface.
 /// 크기는 이 오브젝트의 X/Z 스케일로 조절하고, 콜라이더는 가로세로 1을 유지할 것.
@@ -18,8 +18,7 @@ public abstract class WheelPadBase : NetworkBehaviour
     [Tooltip("겹침 검사에 쓸 레이어.")]
     [SerializeField] private LayerMask detectionMask = ~0;
 
-    [Tooltip("휠 바닥 접점이 장판 범위를 이만큼(m) 벗어나도 밟은 것으로 봄.\n" +
-             "콜라이더가 넉넉해도 겉보기에 휠이 닿았을 때만 효과가 나게 함.")]
+    [Tooltip("휠 바닥 접점이 장판 범위를 이만큼(m) 벗어나도 밟은 것으로 봄.")]
     [Min(0f)][SerializeField] private float contactTolerance = 0.3f;
 
     private BoxCollider area;
@@ -89,7 +88,6 @@ public abstract class WheelPadBase : NetworkBehaviour
 
     /// <summary>
     /// 구의 바닥 접점(중심 바로 아래)이 상자 범위 위에 있는지 판단함. 구가 아니면 항상 참.
-    /// 구의 옆면이 상자에 먼저 닿아도, 바닥이 장판 위에 올라서야 효과가 나게 함.
     /// 높이는 위쪽만 봄. 장판이 바닥보다 조금 떠 있어도 동작하고, 장판 위로 떠오른 구에는 효과가 없음.
     /// </summary>
     public static bool ContactInside(BoxCollider box, Rigidbody rb, float tolerance)

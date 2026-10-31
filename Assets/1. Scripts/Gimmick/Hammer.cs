@@ -38,14 +38,14 @@ public class Hammer : NetworkBehaviour, IAfterTick
     [SerializeField] private LayerMask _hitMask = ~0;
 
     [Tooltip("튕겨 나가는 정도. 0이면 닿은 지점의 해머 속도만큼만 밀려 해머에 붙어 가고, 1이면 그 두 배로 튕김.\n" +
-             "해머는 휠보다 훨씬 무거운 것으로 봄. 휠은 해머가 그 지점에서 움직이는 속도 이상으로 밀려나 해머가 휠을 뚫고 지나가지 않음.")]
+             "해머는 휠보다 훨씬 무거운 것으로 봄.")]
     [Range(0f, 1f)][SerializeField] private float _restitution = 0.3f;
 
     private readonly Collider[] _overlapBuffer = new Collider[32];
     private Quaternion _armRestLocalRotation;
     private Vector3 _headOffset;
 
-    // 머리 캡슐의 양 끝(팔 기준)과 반지름. 보이는 머리 크기로 판정하기 위함.
+    // 머리 캡슐의 양 끝(팔 기준)과 반지름.
     private bool _hasHeadCapsule;
     private Vector3 _headEndA;
     private Vector3 _headEndB;
@@ -68,7 +68,7 @@ public class Hammer : NetworkBehaviour, IAfterTick
         Transform head = _head != null ? _head : _arm.transform;
         _headOffset = Quaternion.Inverse(_arm.rotation) * (head.position - _arm.position);
 
-        // 머리 중심 구만으로 판정하면 머리 면이 휠에 박힌 뒤 중심이 닿아서야 날아감
+        // 머리에 캡슐 콜라이더가 있으면 그 모양으로 판정함
         if (head.TryGetComponent<CapsuleCollider>(out var capsule))
         {
             GetCapsuleWorld(capsule, out Vector3 a, out Vector3 b, out _headCapsuleRadius);
@@ -136,7 +136,7 @@ public class Hammer : NetworkBehaviour, IAfterTick
         Vector3 headPosition = pivot + armRotation * _headOffset;
 
         // 보이는 모양 그대로 판정함: 손잡이(축→머리)와 머리. 판(데크)이든 공이든 닿으면 휠을 밈.
-        // 팔 콜라이더는 꺼 둠. 켜면 키네마틱 팔이 머리 속도 그대로 휠을 쳐서 수십 m/s로 날려 버림.
+        // 팔 콜라이더는 꺼 둠.
         int count = Physics.OverlapCapsuleNonAlloc(
             pivot, headPosition, _handleRadius, _overlapBuffer, _hitMask, QueryTriggerInteraction.Ignore);
         if (TryHitWheel(count, time, pivot, pivot, headPosition))
@@ -199,7 +199,7 @@ public class Hammer : NetworkBehaviour, IAfterTick
             Vector3 onSegment = ClosestOnSegment(segA, segB, center);
             Vector3 normal = center - onSegment;
 
-            // 판만 닿았으면(손잡이가 데크를 침) 옆으로만 밂. 공 중심은 데크 아래라 위아래 성분은 의미가 없음.
+            // 판만 닿았으면(손잡이가 데크를 침) 옆으로만 밂.
             if (!hitBall)
                 normal.y = 0f;
 
@@ -210,7 +210,7 @@ public class Hammer : NetworkBehaviour, IAfterTick
             // 해머가 그 지점에서 움직이는 속도. 진자이므로 축 기준 회전 속도 × 거리.
             Vector3 hammerVelocity = Vector3.Cross(GetAngularVelocity(time), onSegment - pivot);
 
-            // 해머는 휠보다 훨씬 무거움: 다가오는 성분만큼 되튕김. 이미 해머보다 빨리 멀어지는 중이면 그대로 둠.
+            // 다가오는 성분만큼 되튕김. 이미 해머보다 빨리 멀어지는 중이면 그대로 둠.
             float approach = Vector3.Dot(body.linearVelocity - hammerVelocity, normal);
             if (approach >= 0f)
                 continue;

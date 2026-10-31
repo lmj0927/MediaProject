@@ -24,8 +24,7 @@ public class SlowZone : MonoBehaviour
     [Tooltip("휠 외의 Rigidbody도 감속함. 땅에 떨어진 화물 등.")]
     [SerializeField] private bool affectOtherBodies = false;
 
-    [Tooltip("휠 바닥 접점이 구역을 이만큼(m) 벗어나도 안에 있는 것으로 봄.\n" +
-             "콜라이더가 넉넉해도 겉보기에 휠이 닿았을 때만 효과가 나게 함.")]
+    [Tooltip("휠 바닥 접점이 구역을 이만큼(m) 벗어나도 안에 있는 것으로 봄.")]
     [Min(0f)][SerializeField] private float contactTolerance = 0.3f;
 
     private BoxCollider area;
@@ -39,7 +38,7 @@ public class SlowZone : MonoBehaviour
 
         if (col is BoxCollider box)
         {
-            // 부모 스케일에 따라 늘어나므로 가로세로는 1로 둠. 높이만 직접 지정.
+            // 가로세로는 1, 높이만 직접 지정
             box.size = new Vector3(1f, 2f, 1f);
             box.center = new Vector3(0f, 1f, 0f);
         }

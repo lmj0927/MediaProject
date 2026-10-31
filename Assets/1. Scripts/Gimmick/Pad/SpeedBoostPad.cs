@@ -14,11 +14,10 @@ public class SpeedBoostPad : WheelPadBase
     [Tooltip("장판 방향으로 가하는 가속도(m/s²).")]
     [SerializeField] private float acceleration = 25f;
 
-    [Tooltip("장판 방향 속도가 이 값에 도달하면 더 밀지 않음(m/s). 0이면 제한 없음.\n" +
-             "긴 장판에서 속도가 끝없이 붙는 것을 막음.")]
+    [Tooltip("장판 방향 속도가 이 값에 도달하면 더 밀지 않음(m/s). 0이면 제한 없음.")]
     [SerializeField] private float maxBoostSpeed = 30f;
 
-    [Tooltip("미는 만큼 구름도 맞춰 줌. 비활성화시 밀리기만 하고 미끄러짐.")]
+    [Tooltip("미는 만큼 구름도 맞춰 줌.")]
     [SerializeField] private bool matchRolling = true;
 
     /// <summary>미는 방향.</summary>
