@@ -2,7 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// 다음 목표 나침반. 둥근 판 위 주황 화살표가 다음 체크포인트 방향을 가리킴.
+/// 길 방향 나침반. 둥근 판 위 주황 화살표가 가야 할 방향을 가리킴.
 /// angle은 화면 기준(0 = 화면 위쪽, 시계 방향이 +).
 /// </summary>
 public class CompassGraphic : HudGraphic

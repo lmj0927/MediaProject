@@ -46,7 +46,7 @@ public class Player : NetworkBehaviour, IHoldable, ILaunchable
     [Tooltip("착지 후 무게 배율을 유지하는 시간(초) (임시 튜닝값)")]
     [SerializeField] private float _stampWeightDuration = 0.3f;
 
-    [Tooltip("Stamp 입력 후 공중에 멈춰 자세를 잡는 시간(초). 내려찍기를 눈으로 알아볼 여유를 줌")]
+    [Tooltip("Stamp 입력 후 공중에 멈춰 자세를 잡는 시간(초)")]
     [SerializeField] private float _stampHangTime = 0.18f;
 
     [Tooltip("Stamp 착지 후 착지 자세를 유지하는 시간(초). 이 동안 이동·점프·잡기 입력을 받지 않음")]
@@ -106,7 +106,7 @@ public class Player : NetworkBehaviour, IHoldable, ILaunchable
     /// <summary>공중 Stamp 중(착지까지). Host 시뮬 상태.</summary>
     [Networked] private NetworkBool IsStamping { get; set; }
 
-    /// <summary>Stamp 착지 직후 자세 유지 중. 애니가 착지 자세에 머무르도록 복제함.</summary>
+    /// <summary>Stamp 착지 직후 자세 유지 중. 애니(StampHold)용으로 복제함.</summary>
     [Networked] private NetworkBool IsStampRecovering { get; set; }
 
     /// <summary>폭발 등으로 날아가는 중(착지까지). 입력과 NCC 감속을 무시.</summary>
@@ -254,7 +254,7 @@ public class Player : NetworkBehaviour, IHoldable, ILaunchable
         {
             ApplyStampVelocity();
 
-            // 공중 정지 중에는 Move를 부르지 않아 중력도 받지 않고 제자리에 머무름
+            // 공중 정지 중에는 Move를 부르지 않음(중력 없이 제자리)
             if (!IsStampHanging)
             {
                 _cc.Move(Vector3.zero);

@@ -14,7 +14,7 @@ public class CoursePoint : MonoBehaviour
     public bool sharpCorner;
 
 #if UNITY_EDITOR
-    // 씬 뷰에서 지점을 클릭해서 고를 수 있게 지점 쪽에서 그림
+    // 씬 뷰 표시. 지점마다 그려서 클릭으로 고를 수 있음
     private void OnDrawGizmos()
     {
         var parent = transform.parent;

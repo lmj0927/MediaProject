@@ -7,7 +7,7 @@ using UnityEngine.UI;
 /// 원판 위쪽 = 화면 위쪽(카메라가 보는 방향).
 ///   명암: 낮은 쪽이 어둡고 높은 쪽이 밝음.
 ///   주황 부채꼴: 기운 방향. 세기만큼 바깥으로 늘어나고, 옅은 눈금 3줄로 단계를 읽음.
-///   흰 화살표(속이 빈 외곽선): 실제로 굴러가는 방향과 속도. 표식에 가리지 않게 맨 위에 그리고, 속이 비어 있어 밑의 표식이 비쳐 보임.
+///   흰 화살표(속이 빈 외곽선): 굴러가는 방향과 속도. 표식 위에 그림.
 ///   점: 판 위의 플레이어(캐릭터 색, 내 캐릭터는 흰 고리), 몬스터(보라 네모), 폭탄(검은 원).
 /// 값은 GameHud가 매 프레임 넣어 줌. 좌표는 원판 반지름 기준 -1~1.
 /// </summary>
@@ -37,9 +37,9 @@ public class BalanceDiscGraphic : HudGraphic
         float outer = Mathf.Min(rect.width, rect.height) * 0.5f * 0.94f;
         float unit = outer / 120f;          // 선 두께 등은 원판 크기에 비례
         float deck = outer * 0.82f;         // 초록 바닥 반지름
-        const float rot = 22.5f;            // 팔각형 변이 위아래를 향하게
+        const float rot = 22.5f;            // 팔각형 변이 위아래를 향함
 
-        // 그림자: 크기를 조금씩 키운 반투명 판을 겹쳐 흐릿하게 보이게 함
+        // 그림자: 크기를 조금씩 키운 반투명 판을 겹침
         for (int i = 3; i >= 1; i--)
             HudMesh.Polygon(vh, HudMesh.Regular(c + new Vector2(2f, -8f) * unit, outer + i * 3f * unit, 8, rot), new Color32(0, 0, 0, 40));
 
@@ -89,7 +89,7 @@ public class BalanceDiscGraphic : HudGraphic
         // 가운데 축
         HudMesh.OutlinedCircle(vh, c, 8f * unit, 2f * unit, new Color32(235, 225, 200, 255), HudColors.Navy, 20);
 
-        // 표식: 폭탄 → 몬스터 → 다른 플레이어 → 내 캐릭터 순으로 그려 내 캐릭터가 맨 위에 보이게 함
+        // 표식: 폭탄 → 몬스터 → 다른 플레이어 → 내 캐릭터 순으로 그림
         DrawMarkers(vh, c, deck, unit, MarkerKind.Bomb, false);
         DrawMarkers(vh, c, deck, unit, MarkerKind.Monster, false);
         DrawMarkers(vh, c, deck, unit, MarkerKind.Player, false);
@@ -106,7 +106,7 @@ public class BalanceDiscGraphic : HudGraphic
 
         Vector2 dir = travel / travel.magnitude;
         Vector2 side = new Vector2(-dir.y, dir.x);
-        // 느릴 때도 화살표 모양이 무너지지 않게 최소 길이를 둠
+        // 길이는 속도에 비례, 최소 길이 있음
         float length = Mathf.Max(deck * (0.12f + 0.62f * speed), 34f * unit);
         Vector2 tip = c + dir * length;
         Vector2 neck = tip - dir * 16f * unit;
@@ -122,7 +122,7 @@ public class BalanceDiscGraphic : HudGraphic
         DrawOutline(vh, outline, 3f * unit, HudColors.White);
     }
 
-    /// <summary>닫힌 외곽선. 모서리는 원으로 메워 끊기지 않게 함.</summary>
+    /// <summary>닫힌 외곽선. 모서리는 원으로 메움.</summary>
     private static void DrawOutline(VertexHelper vh, Vector2[] points, float width, Color32 color)
     {
         for (int i = 0; i < points.Length; i++)

@@ -17,7 +17,7 @@ public class CourseRoute : MonoBehaviour
         public float along;
         /// <summary>지금까지 가장 멀리 간 위치(m). 지난 체크포인트(진행바 하한) 판정에 씀.</summary>
         public float best;
-        /// <summary>경로에서 수평으로 떨어진 거리(m). 점프로 뜬 높이는 넣지 않음.</summary>
+        /// <summary>경로에서 수평으로 떨어진 거리(m).</summary>
         public float offRoute;
         public bool initialized;
         public float reacquireTimer;
@@ -27,19 +27,19 @@ public class CourseRoute : MonoBehaviour
     [Tooltip("곡선을 잘게 나누는 간격(m). 작을수록 정확하지만 계산이 늘어남.")]
     [SerializeField] private float sampleSpacing = 1f;
 
-    [Tooltip("휠 위치를 찾을 때 지금 위치에서 경로를 따라 뒤로 살펴볼 거리(m). 길이 붙어 있는 곳에서 엉뚱한 구간으로 튀지 않게 함.")]
+    [Tooltip("휠 위치를 찾을 때 지금 위치에서 경로를 따라 뒤로 살펴볼 거리(m).")]
     [SerializeField] private float searchBehind = 10f;
 
     [Tooltip("휠 위치를 찾을 때 지금 위치에서 경로를 따라 앞으로 살펴볼 거리(m).")]
     [SerializeField] private float searchAhead = 25f;
 
-    [Tooltip("살펴본 범위에서 찾은 위치가 수평으로 이보다 멀면(m) 경로 전체에서 다시 찾아봄(리셋·리스폰 대응). 점프로 높이 뜬 건 치지 않음.")]
+    [Tooltip("살펴본 범위에서 찾은 위치가 수평으로 이보다 멀면(m) 경로 전체에서 다시 찾아봄.")]
     [SerializeField] private float reacquireDistance = 12f;
 
     [Tooltip("경로 전체에서 찾은 쪽이 이 시간(초) 동안 계속 훨씬 가까워야 그쪽으로 옮김.")]
     [SerializeField] private float reacquireTime = 1f;
 
-    [Tooltip("경로 위 가장 가까운 곳을 고를 때 높이 차이를 얼마나 쳐줄지(0~1). 위아래로 겹친 길을 구분하는 데 씀. 0이면 겹친 길을 구분 못 함.")]
+    [Tooltip("경로 위 가장 가까운 곳을 고를 때 높이 차이를 반영하는 비율(0~1). 0이면 위아래로 겹친 길을 구분 못 함.")]
     [Range(0f, 1f)]
     [SerializeField] private float verticalWeight = 0.5f;
 
@@ -90,7 +90,7 @@ public class CourseRoute : MonoBehaviour
         for (int i = 0; i < points.Count - 1; i++)
         {
             Vector3 p1 = points[i].position, p2 = points[i + 1].position;
-            // 끝점이거나 각진 코너면 바깥쪽 조절점을 구간 반대편으로 둬서 그 지점에서 곡선이 꺾이게 함
+            // 끝점이거나 각진 코너면 바깥쪽 조절점을 구간 반대편으로 둠(그 지점에서 꺾임)
             Vector3 p0 = i > 0 && !IsSharp(i) ? points[i - 1].position : p1 + (p1 - p2);
             Vector3 p3 = i + 2 < points.Count && !IsSharp(i + 1) ? points[i + 2].position : p2 + (p2 - p1);
 
@@ -110,7 +110,7 @@ public class CourseRoute : MonoBehaviour
     private bool IsSharp(int index) => points[index].TryGetComponent(out CoursePoint p) && p.sharpCorner;
     private bool IsCheckpoint(int index) => points[index].TryGetComponent(out CoursePoint p) && p.checkpoint;
 
-    /// <summary>centripetal Catmull-Rom. t는 p1(0)~p2(1). 지점 간격이 들쭉날쭉해도 곡선이 덜 튀어나감.</summary>
+    /// <summary>centripetal Catmull-Rom. t는 p1(0)~p2(1).</summary>
     private static Vector3 CatmullRom(Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3, float t)
     {
         float t0 = 0f;
@@ -147,7 +147,7 @@ public class CourseRoute : MonoBehaviour
 
         float along = Nearest(position, tracker.along - searchBehind, tracker.along + searchAhead, out float distance, out float flatDistance);
         bool jumped = false;
-        // 벗어났는지는 수평 거리로만 봄. 점프로 높이 뜬 동안 위치가 멈춰서 나침반이 뒤를 가리키던 문제를 막음
+        // 벗어났는지는 수평 거리로 판단함
         if (flatDistance > reacquireDistance)
         {
             float anywhere = Nearest(position, 0f, TotalLength, out float anywhereDistance, out float anywhereFlat);
@@ -164,7 +164,7 @@ public class CourseRoute : MonoBehaviour
             }
             else tracker.reacquireTimer = 0f;
 
-            // 길에서 멀리 벗어난 동안은 범위 안 가장 가까운 곳이 프레임마다 끌려다니므로 위치를 그대로 둠
+            // 길에서 멀리 벗어난 동안은 위치를 그대로 둠
             if (!jumped) along = tracker.along;
         }
         else tracker.reacquireTimer = 0f;
@@ -227,7 +227,7 @@ public class CourseRoute : MonoBehaviour
         s = Mathf.Clamp(s, 0f, TotalLength);
         int i = IndexAt(s);
         float span = lengths[i + 1] - lengths[i];
-        // 높이만 바뀌는 구간(엘리베이터 등)은 수평 길이가 0이라 그 끝을 돌려줌
+        // 높이만 바뀌는 구간(엘리베이터 등)은 그 끝을 돌려줌
         return span < 1e-4f ? samples[i + 1] : Vector3.Lerp(samples[i], samples[i + 1], (s - lengths[i]) / span);
     }
 
@@ -272,7 +272,7 @@ public class CourseRoute : MonoBehaviour
 #if UNITY_EDITOR
     private void OnDrawGizmos()
     {
-        // 편집 중에는 지점을 옮기면 바로 보이게 매번 다시 만듦
+        // 편집 중에는 매번 다시 만듦
         if (!Application.isPlaying) Rebuild();
         if (samples.Count < 2) return;
 

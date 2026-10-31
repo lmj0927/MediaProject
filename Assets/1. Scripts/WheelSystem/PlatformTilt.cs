@@ -445,7 +445,7 @@ public class PlatformTilt : NetworkBehaviour, IAfterTick
 
         UpdateDip(dt);
 
-        // 판 위 물체가 따라 움직이도록 눌림까지 포함한 실제 회전으로 각속도를 구함
+        // 각속도는 눌림까지 포함한 실제 회전으로 구함
         Quaternion pose = PoseTilt;
         Quaternion delta = pose * Quaternion.Inverse(previousRotation);
         delta.ToAngleAxis(out float degrees, out Vector3 axis);
@@ -458,7 +458,6 @@ public class PlatformTilt : NetworkBehaviour, IAfterTick
 
     /// <summary>
     /// 내려찍기 착지. 찍은 쪽으로 판을 바로 눌렀다가 천천히 되돌림. Host SA에서만.
-    /// 무게 배율은 기울기 반응 속도를 거쳐 늦게 들어가므로, 찍은 순간의 반응은 이 눌림이 맡음.
     /// strength는 판 중심에서의 거리 비율(0~1). sinceLast는 같은 사람이 직전에 찍은 뒤 지난 시간(초).
     /// </summary>
     public void ApplyStampDip(Vector3 worldOffset, float strength, float sinceLast = float.PositiveInfinity)

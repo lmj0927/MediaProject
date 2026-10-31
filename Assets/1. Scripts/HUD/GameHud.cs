@@ -5,7 +5,7 @@ using UnityEngine.UI;
 
 /// <summary>
 /// 게임 HUD. 실행하면 화면 캔버스를 만들고 매 프레임 판·휠·플레이어 상태를 읽어 그림.
-/// 각 피어가 자기 화면에서만 그림(네트워크로 보내는 것 없음). 읽는 값은 모두 복제되는 값이라 Host/Client가 똑같이 보임.
+/// 각 피어가 자기 화면에서만 그림(네트워크로 보내는 것 없음).
 ///   왼쪽 아래: 균형 원판(기울기, 진행 방향, 판 위 플레이어·몬스터·폭탄)
 ///   가운데 위: 코스 진행도 + 길 방향 나침반·다음 체크포인트까지 거리 (씬에 CourseRoute가 있을 때만)
 ///   왼쪽 위: 팀원 상태(판 밖에 있으면 회색 + OFF)
@@ -23,7 +23,7 @@ public class GameHud : MonoBehaviour
     [Tooltip("화면 기준 카메라. 비우면 메인 카메라를 씀.")]
     [SerializeField] private Camera viewCamera;
 
-    [Tooltip("나침반이 가리키는 곳: 경로를 따라 지금 위치에서 이만큼(m) 앞. 커브에서도 길 방향을 가리키게 함.")]
+    [Tooltip("나침반이 가리키는 곳: 경로를 따라 지금 위치에서 이만큼(m) 앞.")]
     [SerializeField] private float compassLookAhead = 15f;
 
     [Tooltip("휠 최고 속도(m/s). 진행 방향 화살표 길이의 기준.")]
@@ -300,7 +300,7 @@ public class GameHud : MonoBehaviour
 
     private T Create<T>(string objectName, Vector2 anchor, Vector2 pivot, Vector2 position, Vector2 size) where T : Graphic
     {
-        var go = new GameObject(objectName, typeof(RectTransform), typeof(CanvasRenderer)); // 런타임 생성 시 CanvasRenderer가 자동으로 안 붙어서 직접 추가함
+        var go = new GameObject(objectName, typeof(RectTransform), typeof(CanvasRenderer));
         go.transform.SetParent(root, false);
         var rt = go.GetComponent<RectTransform>();
         rt.anchorMin = rt.anchorMax = anchor;

@@ -76,7 +76,7 @@ public class WheelConfig : ScriptableObject
     [Range(0f, 1f)] public float stampAirFactor = 0.3f;
 
     [Tooltip("판 가장자리에서 내려찍었을 때 판이 찍은 쪽으로 바로 눌리는 각도(도).\n" +
-                "무게(기울기)가 따라오기 전에 판이 먼저 꺼져서 찍은 순간 반응이 보임. 중심에서 멀수록 커지고 정중앙이면 0. 0이면 사용 안 함.")]
+                "중심에서 멀수록 커지고 정중앙이면 0. 0이면 사용 안 함.")]
     [Min(0f)] public float stampDipAngle = 3f;
 
     [Tooltip("눌리는 속도(도/초). 클수록 찍는 순간 판이 확 꺼짐. 너무 크면 판 위 물체가 튈 수 있음.")]

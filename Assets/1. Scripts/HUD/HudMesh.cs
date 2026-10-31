@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// HUD 도형을 코드로 그리는 도구. 텍스처 없이 메시로 그려서 해상도와 상관없이 선명함.
+/// HUD 도형을 코드로 그리는 도구. 텍스처 없이 메시로 그림.
 /// 각도는 도 단위, 0이 오른쪽(+x)이고 반시계 방향이 +. 좌표는 RectTransform 로컬(픽셀) 기준.
 /// </summary>
 public static class HudMesh
@@ -89,7 +89,7 @@ public static class HudMesh
         => Arc(vh, center, inner, outer, 0f, 360f, color, segments);
 
     /// <summary>
-    /// 반지름·각도에 따라 색이 바뀌는 부채꼴. 부드러운 그라데이션용으로 잘게 나눔.
+    /// 반지름·각도에 따라 색이 바뀌는 부채꼴. 잘게 나눠 그림.
     /// color(radiusT 0~1, angleT -1~1)로 꼭짓점 색을 정함.
     /// </summary>
     public static void ShadedWedge(VertexHelper vh, Vector2 center, float inner, float outer, float centerDegrees, float halfDegrees,
@@ -171,11 +171,11 @@ public abstract class HudGraphic : MaskableGraphic
 
     protected abstract void Build(VertexHelper vh, Rect rect);
 
-    /// <summary>값이 바뀌었으니 다시 그림.</summary>
+    /// <summary>다시 그림.</summary>
     public void Redraw() => SetVerticesDirty();
 }
 
-/// <summary>HUD 공통 색. 판(테두리 주황·노랑, 초록 바닥)과 같은 색을 써서 한눈에 같은 물건으로 보이게 함.</summary>
+/// <summary>HUD 공통 색. 판(테두리 주황·노랑, 초록 바닥)과 같은 색.</summary>
 public static class HudColors
 {
     public static readonly Color32 Navy = new Color32(28, 32, 58, 255);
