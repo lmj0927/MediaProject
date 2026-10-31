@@ -12,7 +12,7 @@ using UnityEditor;
 /// 휠이 거의 멈춰 있어야 하며(boardMaxSpeed), 이 상태가 boardTime 동안 끊기지 않아야 출발함.
 ///
 /// 이동 중 휠이 떨어지면(returnOnFall) 그 자리에서 시작점으로 되돌아감.
-/// 튕겨서 잠깐 뜨는 경우를 무시하도록 fallGraceTime 동안 계속 벗어나 있어야 떨어진 것으로 봄.
+/// fallGraceTime 동안 계속 벗어나 있어야 떨어진 것으로 봄.
 ///
 /// 도착 후 기본은 그 자리에 머무름.
 /// returnWhenEmpty: 휠이 내리면 시작점으로 복귀함.
@@ -50,7 +50,7 @@ public class MovingPad : NetworkBehaviour, IAfterTick
     [Tooltip("평균 이동 속도(m/s). easeInOut 활성화시 중간 구간은 이보다 빠름.")]
     [Min(0.1f)][SerializeField] private float speed = 3f;
 
-    [Tooltip("출발과 도착을 부드럽게 함. 판 위 사람과 화물이 덜 쏠림.")]
+    [Tooltip("출발과 도착을 부드럽게 함.")]
     [SerializeField] private bool easeInOut = true;
 
     [Header("Boarding")]
@@ -64,14 +64,13 @@ public class MovingPad : NetworkBehaviour, IAfterTick
     [Tooltip("휠 바닥과 발판 바닥 사이 허용 간격(m). 이보다 떠 있으면 올라온 것으로 보지 않음.")]
     [Min(0f)][SerializeField] private float groundTolerance = 0.3f;
 
-    [Tooltip("휠의 수평 속도가 이 값(m/s) 이하여야 올라온 것으로 봄. 굴러오던 기세가 남은 채 출발하는 것을 막음.\n" +
+    [Tooltip("휠의 수평 속도가 이 값(m/s) 이하여야 올라온 것으로 봄.\n" +
              "0이면 속도를 보지 않음.")]
     [Min(0f)][SerializeField] private float boardMaxSpeed = 1f;
 
     [Header("Ride")]
-    [Tooltip("이동 중 휠이 판 기울기로 굴러가는 것을 억제함. 무게 조종은 약하게 남음.\n" +
-             "비활성화시 이동 중에도 평소처럼 굴러가며, 판 중앙에 서지 않으면 발판 밖으로 밀려날 수 있음.")]
-    [SerializeField] private bool holdWhileMoving = true;
+    [Tooltip("이동 중 휠이 판 기울기로 굴러가는 것을 억제함. 무게 조종은 약하게 남음.")]
+    [SerializeField] private bool holdWhileMoving = false;
 
     [Tooltip("억제 세기(1/s). 클수록 덜 굴러감.\n" +
              "기울기로 굴러가는 속도가 대략 torqueGain / (torqueGain + 이 값) 배로 줄어듦.\n" +
@@ -84,13 +83,13 @@ public class MovingPad : NetworkBehaviour, IAfterTick
              "비활성화시 휠이 없어도 도착 지점까지 계속 감.")]
     [SerializeField] private bool returnOnFall = true;
 
-    [Tooltip("휠이 이 시간(초) 이상 계속 벗어나 있어야 떨어진 것으로 봄. 튕겨서 잠깐 뜨는 경우를 무시함.")]
+    [Tooltip("휠이 이 시간(초) 이상 계속 벗어나 있어야 떨어진 것으로 봄.")]
     [Min(0f)][SerializeField] private float fallGraceTime = 0.3f;
 
     [Header("Wheel")]
-    [Tooltip("이동 중 휠을 밟은 자리에 고정함. 현재는 쓰지 않는 예비 옵션.\n" +
-             "활성화시 휠이 물리적으로 떨어질 수 없으므로 returnOnFall이 동작하지 않음.")]
-    [SerializeField] private bool lockWheel = false;
+    [Tooltip("이동 중 휠을 밟은 자리에 고정함.\n" +
+             "활성화시 returnOnFall이 동작하지 않음.")]
+    [SerializeField] private bool lockWheel = true;
 
     [Header("After Arrival")]
     [Tooltip("도착 후 휠이 내리면 returnDelay 뒤 시작점으로 돌아감. 비활성화시 도착 지점에 머무름.")]
@@ -386,11 +385,15 @@ public class MovingPad : NetworkBehaviour, IAfterTick
 
         padVelocity = dt > 0f ? delta / dt : Vector3.zero;
 
+        // Rigidbody와 transform을 함께 옮김
         pad.position = target;
+        pad.transform.position = target;
 
         if (lockedWheel != null)
         {
-            lockedWheel.MovePosition(target + lockedOffset);
+            Vector3 wheelTarget = target + lockedOffset;
+            lockedWheel.position = wheelTarget;
+            lockedWheel.transform.position = wheelTarget;
             return;
         }
 

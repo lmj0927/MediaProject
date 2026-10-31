@@ -510,7 +510,7 @@ GameObject:
   m_Component:
   - component: {fileID: 628175816506155077}
   m_Layer: 0
-  m_Name: Armature (1)
+  m_Name: Armature
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1061,7 +1061,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3990687724570847287, guid: 92b5e8a1a0e8de04fb8edecd0139f3af, type: 3}
       propertyPath: m_Name
-      value: Pink 1
+      value: Red
       objectReference: {fileID: 0}
     - target: {fileID: 8119955753711941705, guid: 92b5e8a1a0e8de04fb8edecd0139f3af, type: 3}
       propertyPath: m_LocalPosition.x

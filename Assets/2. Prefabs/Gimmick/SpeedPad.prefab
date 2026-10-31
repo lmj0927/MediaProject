@@ -93,7 +93,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 4294967295
   acceleration: 30
-  maxBoostSpeed: 30
+  maxBoostSpeed: 20
   matchRolling: 1
 --- !u!1 &7478223172965030455
 GameObject:

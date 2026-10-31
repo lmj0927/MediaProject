@@ -55,6 +55,7 @@ public class CenterOfMassSolver : NetworkBehaviour
     private Vector3 smoothedOffset;
     private Vector3 smoothVelocity;
     private PlatformTilt platform;
+    private SphereDriver driver;
 
     /// <summary>축 기준 수평 오프셋(월드 XZ). 길이가 0이면 균형 상태.</summary>
     public Vector3 WorldOffset => smoothedOffset;
@@ -75,6 +76,9 @@ public class CenterOfMassSolver : NetworkBehaviour
     private void Awake()
     {
         platform = GetComponent<PlatformTilt>();
+        // pivot은 판일 수도 있으므로 판이 따라가는 구체에서 찾음
+        Transform sphere = platform != null && platform.Sphere != null ? platform.Sphere : pivot;
+        if (sphere != null) driver = sphere.GetComponentInParent<SphereDriver>();
 
         if (pivot == null)
             Debug.LogWarning($"{name}: pivot이 비어 있습니다. 구체의 Transform을 지정하세요.", this);
@@ -198,6 +202,27 @@ public class CenterOfMassSolver : NetworkBehaviour
         if (influenceSum <= Mathf.Epsilon) return Vector3.zero;
 
         return weightedSum / influenceSum;
+    }
+
+    /// <summary>
+    /// 내려찍기 착지. 찍은 위치 쪽으로 휠을 짧게 밀어줌. 중심에서 멀수록 세고 정중앙이면 없음.
+    /// 무게 배율은 기울기로만 들어가 반응이 느리므로, 짧은 충격은 휠 속도에 바로 넣음.
+    /// sinceLast: 같은 대상이 직전에 찍은 뒤 지난 시간(초). 연타일수록 약해짐.
+    /// </summary>
+    public void ApplyImpact(WeightSource source, float sinceLast = float.PositiveInfinity)
+    {
+        if (Object == null || !Object.IsValid || !Object.HasStateAuthority) return;
+        if (driver == null || source == null) return;
+
+        Vector3 offset = source.WorldPosition - PivotPosition;
+        offset.y = 0f;
+
+        float radius = platform != null ? Mathf.Max(0.01f, platform.EffectiveOffsetRadius) : 1f;
+        float ratio = Mathf.Min(offset.magnitude / radius, 1f);
+        if (ratio <= 0.01f) return;
+
+        driver.ApplyStampKick(offset, ratio, sinceLast);
+        if (platform != null) platform.ApplyStampDip(offset, ratio, sinceLast);
     }
 
     /// <summary>외부 시스템이 무게중심을 밀어낼 때 사용.</summary>

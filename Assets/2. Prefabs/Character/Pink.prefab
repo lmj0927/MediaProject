@@ -1061,7 +1061,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3990687724570847287, guid: 92b5e8a1a0e8de04fb8edecd0139f3af, type: 3}
       propertyPath: m_Name
-      value: Green 1
+      value: Pink
       objectReference: {fileID: 0}
     - target: {fileID: 8119955753711941705, guid: 92b5e8a1a0e8de04fb8edecd0139f3af, type: 3}
       propertyPath: m_LocalPosition.x

@@ -98,6 +98,15 @@ public class PlatformTilt : NetworkBehaviour, IAfterTick
     private TickVisualInterpolator modelVisual;
     private const float VisualSnapDistance = 3f;
 
+    // 내려찍기 눌림: 무게로 정해지는 기울기(currentTilt) 위에 잠깐 더하는 기울기. Host SA 전용.
+    private Vector3 dipAxis = Vector3.right;
+    private float dipAngle;
+    private float dipPeak;
+    private bool dipRising;
+
+    /// <summary>실제로 판에 적용하는 기울기. 무게 기울기 + 내려찍기 눌림.</summary>
+    private Quaternion PoseTilt => dipAngle > 1e-4f ? Quaternion.AngleAxis(dipAngle, dipAxis) * currentTilt : currentTilt;
+
     private Vector3 stepTargetPosition;
     private Quaternion stepTargetRotation = Quaternion.identity;
     private bool hasStepTarget;
@@ -186,6 +195,9 @@ public class PlatformTilt : NetworkBehaviour, IAfterTick
         return flat.magnitude <= PlatformRadius * radiusScale;
     }
 
+    /// <summary>판이 따라가는 구체.</summary>
+    public Transform Sphere => sphere;
+
     /// <summary>판의 각속도(rad/s). Rider가 표면 속도를 계산할 때 사용함.</summary>
     public Vector3 AngularVelocity => angularVelocity;
 
@@ -270,7 +282,7 @@ public class PlatformTilt : NetworkBehaviour, IAfterTick
     public void InvalidateSphereRadius() => cachedSphereRadius = -1f;
 
     /// <summary>판의 현재 법선. SphereDriver가 읽어감.</summary>
-    public Vector3 SurfaceNormal => currentTilt * Vector3.up;
+    public Vector3 SurfaceNormal => PoseTilt * Vector3.up;
 
     /// <summary>수평면 기준 기울기 각도(도).</summary>
     public float TiltAngle => Vector3.Angle(Vector3.up, SurfaceNormal);
@@ -279,13 +291,16 @@ public class PlatformTilt : NetworkBehaviour, IAfterTick
     public float NormalizedTilt =>
         config.maxTiltAngle > 0f ? Mathf.Clamp01(TiltAngle / config.maxTiltAngle) : 0f;
 
-    /// <summary>구체가 굴러가야 할 수평 방향. 기울기가 없으면 zero.</summary>
+    /// <summary>
+    /// 구체가 굴러가야 할 수평 방향(판이 낮아진 쪽, 무게가 쏠린 쪽). 기울기가 없으면 zero.
+    /// 법선이 기운 쪽이 낮아진 쪽임.
+    /// </summary>
     public Vector3 DownhillDirection
     {
         get
         {
             Vector3 n = SurfaceNormal;
-            Vector3 downhill = new Vector3(-n.x, 0f, -n.z);
+            Vector3 downhill = new Vector3(n.x, 0f, n.z);
             return downhill.sqrMagnitude > 1e-6f ? downhill.normalized : Vector3.zero;
         }
     }
@@ -353,7 +368,7 @@ public class PlatformTilt : NetworkBehaviour, IAfterTick
         if (Object.HasStateAuthority)
         {
             SimulateTilt(Runner.DeltaTime);
-            NetTilt = currentTilt;
+            NetTilt = PoseTilt;
         }
         else
         {
@@ -361,7 +376,7 @@ public class PlatformTilt : NetworkBehaviour, IAfterTick
         }
 
         // 물리/콜라이더용: 모든 피어가 구체에 판을 붙임 (판 NT 없음)
-        ApplyPose(currentTilt);
+        ApplyPose(PoseTilt);
     }
 
     void IAfterTick.AfterTick()
@@ -428,13 +443,58 @@ public class PlatformTilt : NetworkBehaviour, IAfterTick
                 previous, currentTilt, config.maxTiltAngularSpeed * dt);
         }
 
-        Quaternion delta = currentTilt * Quaternion.Inverse(previousRotation);
+        UpdateDip(dt);
+
+        // 각속도는 눌림까지 포함한 실제 회전으로 구함
+        Quaternion pose = PoseTilt;
+        Quaternion delta = pose * Quaternion.Inverse(previousRotation);
         delta.ToAngleAxis(out float degrees, out Vector3 axis);
         if (degrees > 180f) degrees -= 360f;
         angularVelocity = float.IsNaN(axis.x) || dt <= 0f
             ? Vector3.zero
             : axis * (degrees * Mathf.Deg2Rad / dt);
-        previousRotation = currentTilt;
+        previousRotation = pose;
+    }
+
+    /// <summary>
+    /// 내려찍기 착지. 찍은 쪽으로 판을 바로 눌렀다가 천천히 되돌림. Host SA에서만.
+    /// strength는 판 중심에서의 거리 비율(0~1). sinceLast는 같은 사람이 직전에 찍은 뒤 지난 시간(초).
+    /// </summary>
+    public void ApplyStampDip(Vector3 worldOffset, float strength, float sinceLast = float.PositiveInfinity)
+    {
+        if (Object == null || !Object.IsValid || !Object.HasStateAuthority) return;
+        if (config == null || config.stampDipAngle <= 0f) return;
+
+        worldOffset.y = 0f;
+        if (worldOffset.sqrMagnitude < 1e-6f) return;
+
+        float angle = config.stampDipAngle * Mathf.Clamp01(strength);
+        if (config.stampRecoverTime > 0f) angle *= Mathf.Clamp01(sinceLast / config.stampRecoverTime);
+        if (angle <= 0f) return;
+
+        // 아직 남은 눌림이 있으면 지금 보이는 기울기를 유지한 채 새 방향으로 이어감
+        Vector3 remaining = dipAxis * dipAngle;
+        Vector3 added = Vector3.Cross(Vector3.up, worldOffset.normalized) * angle;
+        Vector3 combined = dipAngle > 1e-4f ? remaining + added : added;
+        if (combined.sqrMagnitude < 1e-8f) return;
+        dipAngle = dipAngle > 1e-4f ? remaining.magnitude : 0f;
+        dipAxis = combined.normalized;
+        dipPeak = Mathf.Min(combined.magnitude, config.stampDipAngle);
+        dipRising = true;
+    }
+
+    /// <summary>눌림 한 틱: 빠르게 눌리고, 다 눌리면 천천히 0으로 돌아옴.</summary>
+    private void UpdateDip(float dt)
+    {
+        if (dipRising)
+        {
+            dipAngle = Mathf.MoveTowards(dipAngle, dipPeak, config.stampDipSpeed * dt);
+            if (dipAngle >= dipPeak - 1e-4f) dipRising = false;
+            return;
+        }
+
+        if (dipAngle > 0f)
+            dipAngle = Mathf.MoveTowards(dipAngle, 0f, config.stampDipReturnSpeed * dt);
     }
 
     private void ApplyPose(Quaternion tilt)

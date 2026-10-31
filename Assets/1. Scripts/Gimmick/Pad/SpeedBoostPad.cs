@@ -14,11 +14,10 @@ public class SpeedBoostPad : WheelPadBase
     [Tooltip("장판 방향으로 가하는 가속도(m/s²).")]
     [SerializeField] private float acceleration = 25f;
 
-    [Tooltip("장판 방향 속도가 이 값에 도달하면 더 밀지 않음(m/s). 0이면 제한 없음.\n" +
-             "긴 장판에서 속도가 끝없이 붙는 것을 막음.")]
+    [Tooltip("장판 방향 속도가 이 값에 도달하면 더 밀지 않음(m/s). 0이면 제한 없음.")]
     [SerializeField] private float maxBoostSpeed = 30f;
 
-    [Tooltip("미는 만큼 구름도 맞춰 줌. 비활성화시 밀리기만 하고 미끄러짐.")]
+    [Tooltip("미는 만큼 구름도 맞춰 줌.")]
     [SerializeField] private bool matchRolling = true;
 
     /// <summary>미는 방향.</summary>
@@ -46,7 +45,7 @@ public class SpeedBoostPad : WheelPadBase
         // SphereDriver와 같은 축 규칙을 따름. 가속도를 반지름으로 나누면 미끄러짐 없이 구름.
         float radius = SphereRadiusOf(rb);
         if (radius > 0.01f)
-            rb.AddTorque(Vector3.Cross(dir, Vector3.up) * (accel / radius), ForceMode.Acceleration);
+            rb.AddTorque(Vector3.Cross(Vector3.up, dir) * (accel / radius), ForceMode.Acceleration);
     }
 
 #if UNITY_EDITOR

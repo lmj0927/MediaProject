@@ -9,7 +9,7 @@ using UnityEngine.Serialization;
 ///   진행 방향으로 빨라짐: 그대로 허용함. 기울기와 진행 방향이 같으면 평소처럼 가속함.
 ///   진행 방향으로 느려짐: 크게 줄임. 반대로 기울인 정도에 비례해서만 제동이 살아남.
 ///   옆으로 꺾임: 줄임. 방향 전환이 늦어짐.
-/// 저속에서는 유지할 방향이 없으므로 얼음 효과를 서서히 끔. 얼음 위에서 출발하지 못하는 일을 막음.
+/// 저속에서는 얼음 효과를 서서히 끔.
 /// </summary>
 [DefaultExecutionOrder(110)]
 [RequireComponent(typeof(NetworkObject))]
@@ -34,16 +34,14 @@ public class IcePad : WheelPadBase
     [Range(0.01f, 1f)][SerializeField] private float activeBrakeGrip = 0.4f;
 
     [Header("Low speed")]
-    [Tooltip("이 속도(m/s) 이하에서는 얼음 효과가 없음. 두 배 속도에서 최대가 됨.\n" +
-             "느릴 때는 유지할 방향이 없으므로, 출발과 저속 조작은 평소처럼 함.")]
+    [Tooltip("이 속도(m/s) 이하에서는 얼음 효과가 없음. 두 배 속도에서 최대가 됨.")]
     [Min(0.1f)][SerializeField] private float lowSpeed = 2f;
 
     [Header("Safety")]
     [Tooltip("한 틱에 이보다 크게 바뀐 수평 속도(m/s)는 충돌로 보고 그대로 둠.")]
     [Min(0.1f)][SerializeField] private float collisionThreshold = 2f;
 
-    [Tooltip("회전을 진행 방향에 맞춤.\n" +
-             "비활성화시 얼음 위에서 바퀴가 헛돌고, 벗어나는 순간 돌던 방향으로 급발진함.")]
+    [Tooltip("회전을 진행 방향에 맞춤.")]
     [SerializeField] private bool matchSpin = true;
 
     private struct Sample
@@ -140,7 +138,7 @@ public class IcePad : WheelPadBase
 
         Vector3 horizontal = new Vector3(velocity.x, 0f, velocity.z);
         Vector3 yaw = Vector3.Project(rb.angularVelocity, Vector3.up);
-        rb.angularVelocity = Vector3.Cross(horizontal, Vector3.up) / radius + yaw;
+        rb.angularVelocity = Vector3.Cross(Vector3.up, horizontal) / radius + yaw;
     }
 
     /// <summary>얼음을 떠난 대상의 기록을 정리함.</summary>

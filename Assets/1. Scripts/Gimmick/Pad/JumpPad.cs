@@ -32,8 +32,7 @@ public class JumpPad : WheelPadBase
              "1: 굴러오던 기세가 그대로 더해짐. 앞으로 날려주는 도약대에 적합.")]
     [Range(0f, 1f)][SerializeField] private float momentumKeep = 1f;
 
-    [Tooltip("발사 후 회전을 새 진행 방향에 맞춤.\n" +
-             "비활성화시 원래 돌던 방향으로 계속 돌아, 착지하는 순간 원래 방향으로 다시 굴러감.")]
+    [Tooltip("발사 후 회전을 새 진행 방향에 맞춤.")]
     [SerializeField] private bool matchSpin = true;
 
     [Tooltip("수직 속도가 발사 속도의 이 비율보다 낮을 때만 다시 쏨.\n" +
@@ -77,7 +76,7 @@ public class JumpPad : WheelPadBase
         // 구르는 회전을 새 수평 속도에 맞춤. SphereDriver와 같은 축 규칙을 따름.
         // 수직축 회전(제자리 돌기)은 유지함.
         Vector3 yaw = Vector3.Project(rb.angularVelocity, Vector3.up);
-        rb.angularVelocity = Vector3.Cross(horizontal, Vector3.up) / radius + yaw;
+        rb.angularVelocity = Vector3.Cross(Vector3.up, horizontal) / radius + yaw;
     }
 
 #if UNITY_EDITOR

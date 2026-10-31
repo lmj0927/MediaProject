@@ -434,7 +434,12 @@ MonoBehaviour:
   _throwForce: 30
   _throwUpForce: 3
   _throwSeparation: 0.75
-  _stampDownSpeed: 10
+  _stampDownSpeed: 13
+  _stampWeightMultiplier: 3
+  _stampWeightDuration: 0.3
+  _stampHangTime: 0.18
+  _stampRecoverTime: 0.25
+  _launchMinAirTime: 0.15
   _nameTag: {fileID: 7124352992124923665}
 --- !u!114 &1455946021208686840
 MonoBehaviour:
@@ -524,6 +529,7 @@ MonoBehaviour:
   probeMask:
     serializedVersion: 2
     m_Bits: 4294967295
+  minStackNormalY: 0.5
 --- !u!114 &6950795482494924475
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -540,8 +546,15 @@ MonoBehaviour:
   heightAbove: 4
   heightBelow: 0.6
   carryRotationWhenGrounded: 1
+  carryVerticalWhenAirborne: 1
   teleportThreshold: 0.5
   groundSnapDistance: 0.08
+  supportDistance: 0.2
+  supportLift: 0.3
+  supportRiseTolerance: 0.04
+  supportMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
 --- !u!1 &4679162164406545309
 GameObject:
   m_ObjectHideFlags: 0
