@@ -1,47 +1,62 @@
-# Transport automatic traversal
+# Transport traversal test (in progress)
 
 Target: `Assets/3. Scenes/InGameMap_WheelTone.unity`.
 
-Open this scene, exit Play Mode, then choose **Tools > Transport Traversal > Run From Start**.
-The command enters Play Mode and creates a private `GameMode.Host` session. It uses
-the loaded scene without changing Build Settings, spawns no avatars, and runs the
-existing HostPhysicsStepper and networked obstacles. Normal Play Mode does not
-activate this test. A Photon connection is required for Host initialization.
+## Run
 
-`route.json` contains ordered world-space points (increasing Z), desired speed,
-and `clockSpeed` (1 for normal time, 4 for diagnostic acceleration). The test
-clock calls Fusion's updater API; every physics step still uses Runner.DeltaTime.
-Use clockSpeed=1 for final full-route acceptance.
-The pilot follows X/Z and controls only `CenterOfMassSolver.SetExternalBias`.
-Bias magnitude is limited to the existing platform effective radius and moves
-at at most 5 m/s; existing smoothing, tilt, torque and physics remain active.
-No teleport, initial velocity grant, direct force, or checkpoint reset is used.
-Y is used for finish validation, not for steering. This checks virtual COM
-capability, not human coordination or whether a real occupant can remain aboard.
+Save the target scene and wait for Unity compilation/reload to finish. Choose
+**Tools > Transport Traversal > Run From Start** for the configured diagnostic
+clock, or **Run From Start (Normal Clock)** for full-route acceptance.
 
-Each run creates a timestamped directory containing the route, scene SHA256,
-telemetry.jsonl (0.5 simulation-second samples) and result.json. status.json is
-the latest snapshot. Runtime faults must be checked in Unity Console separately;
-a result alone does not establish an error-free run.
+The harness creates a private Fusion GameMode.Host session with no avatars,
+using loaded scene NetworkObjects, existing obstacle motion and HostPhysicsStepper.
+It does not change Build Settings. Photon connectivity is required.
 
-Failures: no new forward metre for 15 seconds, centre below sphere radius + 1m (this map's water is y=0
-and road is above y=12), more than 45m lateral departure, or 1500s timeout.
-Pass: within 7m horizontally of the finish, within 4m vertically of expected
-sphere centre, and grounded for 2 seconds. All runs start from saved scene state.
-Stop Play Mode before modifying the scene or scripts and before the next run.
+`route.json` contains ordered world points, desired speed and clockSpeed (1–4).
+The pilot steers X/Z using only COM external bias, limited to the existing deck
+radius and 5m/s bias movement. It slows forward motion for lateral recovery.
+No direct force, pose or velocity override occurs during driving.
 
-Cycle: inspect telemetry/collision names and local geometry; first check for a
-controller/route error; modify the map only after identifying a geometry or
-placement problem; save and run from start again. Prefer slopes, width,
-connections and obstacle placement before changing Transport settings.
-Preserve the existing map composition and challenges. A failed pilot run is not
-proof that every possible player trajectory is impossible.
+## Diagnostics and evidence
 
-Validation in progress. No full-route pass has been established yet.
+Unity eval: `TransportTraversalMenu.RunSection(startZ, endZ)` places the Transport
+at rest on sampled road after the scene objects are valid, checks the first tick,
+and labels success **DiagnosticPassed**. This is separate from full **Passed**;
+local tests do not reproduce full-run arrival timing or prove continuous traversal.
 
-Latest checkpoint (2026-11-01): wood connections at z235–295 and z440–501 passed;
-central barriers at z521.82 and z555.40 moved to x=-25 and x=25 respectively.
-Latest full-from-start diagnostic reached z808.57, then was knocked sideways near
-z804 (log_construction_001 / Hammer collider contacts; ~50m/s lateral velocity).
-Next investigate clearance/timing of the hanging Hammers around z802/827.
-Transport config has not been tuned. Normal-clock full-route acceptance is open.
+Each timestamped run directory contains route/section bounds, scene SHA256,
+C# hashes, WheelConfig snapshot, 0.5s telemetry, and result.json. status.json is
+latest. Read the last 30 seconds of collision history, not just the final sample:
+moving obstacles can contact intermittently. After a test ends physics may keep
+moving the body; inspect the saved failure position. Check Unity Console as well.
+
+Failures: no new forward metre for 30s; centre below sphere radius + 1m (water is
+at y=0); lateral departure >90m; 1500s timeout. Pass requires 2s within 7m horizontally
+and 4m vertically of the finish with actual road support. Final acceptance uses
+normal clock and no section seed. One failed pilot run does not prove impossibility.
+
+## Current checkpoint
+
+The initial work was committed as f0b015f and merged into local main as fe8396e.
+Further work is on codex/transport-traversal, incorporating main's existing balance
+and Hammer changes. No additional WheelConfig performance tuning was applied.
+
+Verified local passes: 1480–1900 (including first connector ascent), 2490–2705
+(zigzag uphill), and 2660–3050 (high drop, two connections and rotor bypass).
+Partial overlapping runs covered the second-course pillar and moving-disc sections.
+The latest full-from-start run reached z1555 before later repairs. Full normal-clock
+start-to-finish acceptance is still OPEN. Current diagnostic: 3050–3310.
+
+Map changes: seven local wooden connections; widened the pillar approach bridge
+at z2142 to measured 40m; moved central barriers at z521/555; widened Hammer
+recovery islands while preserving scenery proportions; raised 12 Hammer pivots
+8m to reduce underside launches; moved end gate z1589 to the side and widened
+its island; reduced rotor z2849 XZ scale to 35% and moved it left for a right lane.
+
+SphereDriver ground-check fix: the original 0.5R inner sphere misses contact on
+an actual 32.85deg connector. A 0.95R cast detects it with the same flat-ground
+padding; the connector then passed. Evidence: GroundSlopeProbe.json.
+
+Original map backup and raw logs remain local under .ai/Traversal. Player
+coordination, human difficulty, all obstacle phases and client sync are not proved
+by this virtual COM test. Stop Play Mode before editing and before the next run.

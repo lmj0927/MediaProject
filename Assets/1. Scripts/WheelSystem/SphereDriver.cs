@@ -148,7 +148,9 @@ public class SphereDriver : NetworkBehaviour, IAfterTick
     private bool CheckGrounded()
     {
         float radius = Radius;
-        float castRadius = radius * 0.5f;
+        // 작은 반지름은 경사면까지의 수직 거리를 과소평가해 접촉 중에도 공중으로 판정한다.
+        // 실제 구체에 가까운 모양으로 검사하되 평지의 허용 간격은 padding 그대로 유지한다.
+        float castRadius = radius * 0.95f;
         float distance = radius - castRadius + groundCheckPadding;
 
         int count = Physics.SphereCastNonAlloc(
