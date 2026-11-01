@@ -6,6 +6,7 @@ public static class TransportTraversalMenu
 {
     private const string Armed = "TransportTraversal.Armed";
     private const string Clock = "TransportTraversal.Clock";
+    private const string Record = "TransportTraversal.Record";
     private const string StartZ = "TransportTraversal.StartZ", EndZ = "TransportTraversal.EndZ";
     static TransportTraversalMenu() { EditorApplication.playModeStateChanged += OnPlayMode; }
     [MenuItem("Tools/Transport Traversal/Run From Start")]
@@ -17,6 +18,14 @@ public static class TransportTraversalMenu
     }
     [MenuItem("Tools/Transport Traversal/Run From Start (Normal Clock)")]
     public static void RunNormal() { SessionState.SetFloat(Clock, 1f); Run(); }
+    [MenuItem("Tools/Transport Traversal/Record From Start (Normal Clock)")]
+    public static void RecordNormal()
+    {
+        if (EditorApplication.isPlaying) throw new System.InvalidOperationException("Stop Play Mode before a fresh run.");
+        if (!System.IO.File.Exists("C:/ffmpeg/bin/ffmpeg.exe")) throw new System.IO.FileNotFoundException("Recording needs C:/ffmpeg/bin/ffmpeg.exe");
+        SessionState.SetBool(Record, true);
+        RunNormal();
+    }
     public static void RunSection(float startZ, float endZ)
     {
         SessionState.SetFloat(StartZ, startZ); SessionState.SetFloat(EndZ, endZ); Run();
@@ -31,5 +40,11 @@ public static class TransportTraversalMenu
         float start = SessionState.GetFloat(StartZ, 0f), end = SessionState.GetFloat(EndZ, 0f);
         SessionState.SetFloat(StartZ, 0f); SessionState.SetFloat(EndZ, 0f);
         TransportTraversalTest.StartTest(clock, start, end);
+        bool record = SessionState.GetBool(Record, false);
+        SessionState.SetBool(Record, false);
+        if (record) {
+            var test = TransportTraversalTest.Active;
+            test.gameObject.AddComponent<TraversalVideoRecorder>().Begin(test);
+        }
     }
 }

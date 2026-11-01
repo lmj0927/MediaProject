@@ -15,6 +15,7 @@ public class TransportTraversalTest : SimulationBehaviour
     public string Result { get; private set; } = "Starting";
     public float Elapsed { get; private set; }
     public float BestZ { get; private set; }
+    public string RunDirectory => runDirectory;
     private SphereDriver sphere;
     private Rigidbody body;
     private PlatformTilt platform;
@@ -127,7 +128,7 @@ public class TransportTraversalTest : SimulationBehaviour
         float remaining = end.z - p.z;
         float laneSpeed = route.speed * Mathf.Clamp01((25f - Mathf.Abs(targetX - p.x)) / 15f);
         Vector3 desired = new Vector3(Mathf.Clamp((targetX - p.x) * 0.3f, -6f, 6f), 0,
-            Mathf.Min(laneSpeed, Mathf.Max(0f, remaining * 0.7f)));
+            Mathf.Clamp(remaining * 0.7f, -6f, laneSpeed));
         Vector3 velocity = body.linearVelocity; velocity.y = 0;
         Vector3 command = Vector3.ClampMagnitude((desired - velocity) / 6f, 1f);
         bias = Vector3.MoveTowards(bias, command * platform.EffectiveOffsetRadius,
@@ -138,7 +139,8 @@ public class TransportTraversalTest : SimulationBehaviour
         // Overhead scenery is not a valid road-height reference for fall detection.
         if (p.y < platform.SphereRadius + 1f) Complete("FellBelowRoute");
         else if (Mathf.Abs(p.x - targetX) > 90f) Complete("LateralDeparture");
-        else if (Elapsed - lastProgress > 30f) Complete("NoForwardProgress");
+        // Wide Hammer recovery can take over 30s after losing forward distance.
+        else if (Elapsed - lastProgress > 60f) Complete("NoForwardProgress");
         else if (Elapsed > 1500f) Complete("Timeout");
         else {
             Vector3 delta = p - end;
