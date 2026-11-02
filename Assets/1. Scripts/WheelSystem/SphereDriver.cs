@@ -148,7 +148,9 @@ public class SphereDriver : NetworkBehaviour, IAfterTick
     private bool CheckGrounded()
     {
         float radius = Radius;
-        float castRadius = radius * 0.5f;
+        // 작은 반지름은 경사면까지의 수직 거리를 과소평가해 접촉 중에도 공중으로 판정한다.
+        // 실제 구체에 가까운 모양으로 검사하되 평지의 허용 간격은 padding 그대로 유지한다.
+        float castRadius = radius * 0.95f;
         float distance = radius - castRadius + groundCheckPadding;
 
         int count = Physics.SphereCastNonAlloc(
@@ -185,6 +187,26 @@ public class SphereDriver : NetworkBehaviour, IAfterTick
 
     /// <summary>넉백(해머 등)으로 조작이 약해진 상태인지.</summary>
     public bool IsKnockedBack => knockbackTimer > 0f;
+
+    /// <summary>Host 접촉 보정. 발사/넉백 상태 없이 겹침과 안쪽 속도만 제거한다.</summary>
+    internal void ResolveObstacleContact(Vector3 direction, float distance)
+    {
+        if (Object == null || !Object.IsValid || !Object.HasStateAuthority)
+            return;
+
+        Vector3 displacement = direction * (distance + 0.001f);
+        OffsetObstacleSupport(displacement);
+
+        float inward = Vector3.Dot(body.linearVelocity, direction);
+        if (inward < 0f) body.linearVelocity -= direction * inward;
+    }
+
+    internal void OffsetObstacleSupport(Vector3 displacement)
+    {
+        if (Object == null || !Object.IsValid || !Object.HasStateAuthority) return;
+        body.position += displacement;
+        if (platform != null) platform.OffsetStepTarget(displacement);
+    }
 
     /// <summary>
     /// 해머 같은 강한 충격. Host SA에서만.

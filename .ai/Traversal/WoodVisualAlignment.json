@@ -1,0 +1,156 @@
+{
+  "meshBounds": "Center: (0.00, 0.53, 0.01), Extents: (4.15, 0.92, 1.19)",
+  "modelCount": 53,
+  "decks": [
+    {
+      "root": "TraversalRepair_Connection_2915",
+      "length": 76.00003,
+      "width": 40.0,
+      "tiles": 2
+    },
+    {
+      "root": "TraversalRepair_Connection_2795",
+      "length": 48.68933,
+      "width": 40.0,
+      "tiles": 2
+    },
+    {
+      "root": "TraversalRepair_FinalCourseConnection_0",
+      "length": 94.56914,
+      "width": 40.0,
+      "tiles": 2
+    },
+    {
+      "root": "TraversalRepair_Connection_0265",
+      "length": 60.0403175,
+      "width": 26.0,
+      "tiles": 2
+    },
+    {
+      "root": "TraversalRepair_Connection_1545",
+      "length": 56.31626,
+      "width": 40.0,
+      "tiles": 2
+    },
+    {
+      "root": "TraversalRepair_FinalPadConnection_1",
+      "length": 37.6203423,
+      "width": 40.0,
+      "tiles": 1
+    },
+    {
+      "root": "TraversalRepair_Connection_0900",
+      "length": 48.42479,
+      "width": 40.0,
+      "tiles": 2
+    },
+    {
+      "root": "TraversalRepair_TrapdoorLane_1",
+      "length": 90.0,
+      "width": 60.0,
+      "tiles": 2
+    },
+    {
+      "root": "TraversalRepair_TrapdoorLane_0",
+      "length": 30.091898,
+      "width": 60.0,
+      "tiles": 1
+    },
+    {
+      "root": "TraversalRepair_LogApproach_0",
+      "length": 45.04944,
+      "width": 60.0,
+      "tiles": 1
+    },
+    {
+      "root": "TraversalRepair_FinalPadConnection_0",
+      "length": 75.37972,
+      "width": 40.0,
+      "tiles": 2
+    },
+    {
+      "root": "TraversalRepair_FinalPadApproach_0",
+      "length": 32.6239548,
+      "width": 40.0,
+      "tiles": 1
+    },
+    {
+      "root": "TraversalRepair_MovingPlatformBypass",
+      "length": 205.72612,
+      "width": 60.0,
+      "tiles": 5
+    },
+    {
+      "root": "TraversalRepair_FinishLane_3",
+      "length": 41.16877,
+      "width": 40.0,
+      "tiles": 1
+    },
+    {
+      "root": "TraversalRepair_MovingPlatformBypass",
+      "length": 148.66069,
+      "width": 60.0,
+      "tiles": 4
+    },
+    {
+      "root": "TraversalRepair_MovingPlatformBypass",
+      "length": 149.097137,
+      "width": 60.0000038,
+      "tiles": 4
+    },
+    {
+      "root": "TraversalRepair_Connection_1325",
+      "length": 48.4381027,
+      "width": 40.0,
+      "tiles": 2
+    },
+    {
+      "root": "TraversalRepair_Connection_0470",
+      "length": 61.36141,
+      "width": 26.0,
+      "tiles": 2
+    },
+    {
+      "root": "TraversalRepair_TrapdoorLane_2",
+      "length": 30.07341,
+      "width": 60.0,
+      "tiles": 1
+    },
+    {
+      "root": "TraversalRepair_FinishLane_1",
+      "length": 150.0,
+      "width": 40.0,
+      "tiles": 4
+    },
+    {
+      "root": "TraversalRepair_FinishLane_2",
+      "length": 47.7074432,
+      "width": 40.0,
+      "tiles": 1
+    },
+    {
+      "root": "TraversalRepair_FinishLane_0",
+      "length": 132.825287,
+      "width": 40.0,
+      "tiles": 3
+    },
+    {
+      "root": "TraversalRepair_FinishLane_4",
+      "length": 40.401268,
+      "width": 40.0,
+      "tiles": 1
+    },
+    {
+      "root": "TraversalRepair_MovingPlatformBypass",
+      "length": 180.478165,
+      "width": 60.0,
+      "tiles": 4
+    },
+    {
+      "root": "TraversalRepair_LogApproach_1",
+      "length": 45.45943,
+      "width": 60.0,
+      "tiles": 1
+    }
+  ]
+}

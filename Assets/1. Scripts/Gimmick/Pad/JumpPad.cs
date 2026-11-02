@@ -17,6 +17,12 @@ using UnityEditor;
 [RequireComponent(typeof(BoxCollider))]
 public class JumpPad : WheelPadBase
 {
+    [Header("Visual")]
+    [SerializeField] private JumpPadVisual visual = new JumpPadVisual();
+
+    [Networked] private int LaunchCount { get; set; }
+    private int shownLaunchCount;
+    internal event System.Action<JumpPad, Rigidbody> Launched;
     // 이보다 덜 기울었으면 평평한 것으로 봄
     private const float FlatThreshold = 1f;
 
@@ -57,6 +63,23 @@ public class JumpPad : WheelPadBase
     /// <summary>설정 높이에 도달하는 수직 발사 속도(m/s).</summary>
     public float VerticalSpeed => Mathf.Sqrt(2f * Mathf.Abs(Physics.gravity.y) * jumpHeight);
 
+    public override void Spawned()
+    {
+        shownLaunchCount = LaunchCount;
+        visual.Reset();
+    }
+
+    public override void Render()
+    {
+        if (shownLaunchCount != LaunchCount)
+        {
+            shownLaunchCount = LaunchCount;
+            visual.Play();
+        }
+
+        visual.Render(Time.deltaTime);
+    }
+
     protected override void Affect(Rigidbody rb, float dt)
     {
         float vy = VerticalSpeed;
@@ -67,6 +90,8 @@ public class JumpPad : WheelPadBase
 
         Vector3 horizontal = new Vector3(v.x, 0f, v.z) * momentumKeep + PushDirection * horizontalSpeed;
         rb.linearVelocity = horizontal + Vector3.up * vy;
+        LaunchCount++;
+        Launched?.Invoke(this, rb);
 
         if (!matchSpin) return;
 
@@ -154,4 +179,38 @@ public class JumpPad : WheelPadBase
         }
     }
 #endif
+}
+
+/// <summary>발사 이벤트만 받아 물리와 분리된 모델에 애니메이션을 재생한다.</summary>
+[System.Serializable]
+public class JumpPadVisual
+{
+    [SerializeField] private GameObject model;
+    [SerializeField] private AnimationClip clip;
+
+    private float time;
+    private bool playing;
+
+    public void Reset()
+    {
+        playing = false;
+        if (model != null && clip != null)
+            clip.SampleAnimation(model, 0f);
+    }
+
+    public void Play()
+    {
+        time = 0f;
+        playing = true;
+    }
+
+    public void Render(float deltaTime)
+    {
+        if (!playing || model == null || clip == null) return;
+
+        clip.SampleAnimation(model, time);
+        time += deltaTime;
+        if (time >= clip.length)
+            Reset();
+    }
 }

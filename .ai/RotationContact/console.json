@@ -1,0 +1,38 @@
+{
+  "success": true,
+  "command": "command",
+  "data": {
+    "command": "console status",
+    "parameters": {},
+    "result": {
+      "entries": [],
+      "cursor": 32,
+      "session": "31fe84a60d43421089bf92f949840fa4",
+      "returned": 0,
+      "dropped": false,
+      "reset": false,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "log": 3
+      },
+      "groundTruth": {
+        "sampledUtc": "2026-11-02T06:00:17.7663743Z",
+        "ageMs": 185,
+        "compilationFailed": false,
+        "compiling": false,
+        "consoleErrors": 0,
+        "consoleWarnings": 0,
+        "consoleLogs": 3,
+        "seeded": true
+      }
+    },
+    "target": {
+      "host": "127.0.0.1",
+      "port": 7800,
+      "projectPath": "C:\\Unity\\MediaProject"
+    }
+  },
+  "errors": [],
+  "warnings": []
+}

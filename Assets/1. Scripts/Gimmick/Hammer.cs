@@ -266,6 +266,24 @@ public class Hammer : NetworkBehaviour, IAfterTick
         return transform.rotation * Quaternion.AngleAxis(angle, _swingAxis.normalized) * _armRestLocalRotation;
     }
 
+    // Read-only forecast for the COM traversal pilot; uses the same hit geometry as TryHit.
+    internal bool ThreatensTraversal(Vector3 sphereCenter, float sphereRadius, float deckHeight, float deckRadius, float time)
+    {
+        Quaternion rotation = GetArmRotation(GetAngle(time));
+        Vector3 pivot = _arm.position;
+        Vector3 head = pivot + rotation * _headOffset;
+        Vector3 a = _hasHeadCapsule ? pivot + rotation * _headEndA : head;
+        Vector3 b = _hasHeadCapsule ? pivot + rotation * _headEndB : head;
+        float headRadius = _hasHeadCapsule ? _headCapsuleRadius : _hitRadius;
+        for (int i = 0; i < 3; i++) {
+            Vector3 center = sphereCenter + Vector3.up * (i == 0 ? 0f : deckHeight + (i - 1) * 3f);
+            float radius = i == 0 ? sphereRadius : deckRadius;
+            if ((center - ClosestOnSegment(pivot, head, center)).sqrMagnitude < Mathf.Pow(radius + _handleRadius + .5f, 2f) ||
+                (center - ClosestOnSegment(a, b, center)).sqrMagnitude < Mathf.Pow(radius + headRadius + .5f, 2f)) return true;
+        }
+        return false;
+    }
+
     private void OnDrawGizmosSelected()
     {
         if (_head == null)

@@ -18,6 +18,7 @@ public class BasicSpawner : MonoBehaviour, INetworkRunnerCallbacks
     [SerializeField] private Transform _spawnPoint;
 
     private NetworkRunner _runner;
+    private ObstacleMotionRegistry _obstacleMotions;
     private InputAction _moveAction;
     private InputAction _jumpAction;
     private InputAction _holdAction;
@@ -128,14 +129,22 @@ public class BasicSpawner : MonoBehaviour, INetworkRunnerCallbacks
 
     public void OnReliableDataProgress(NetworkRunner runner, PlayerRef player, ReliableKey key, float progress) { }
     public void OnReliableDataReceived(NetworkRunner runner, PlayerRef player, ReliableKey key, ReadOnlySpan<byte> data) { }
-    public void OnSceneLoadDone(NetworkRunner runner) { }
+    public void OnSceneLoadDone(NetworkRunner runner)
+    {
+        _obstacleMotions?.CaptureLoadedScenes();
+    }
     public void OnSceneLoadStart(NetworkRunner runner) { }
     public void OnSessionListUpdated(NetworkRunner runner, List<SessionInfo> sessionList) { }
-    public void OnShutdown(NetworkRunner runner, ShutdownReason shutdownReason) { }
+    public void OnShutdown(NetworkRunner runner, ShutdownReason shutdownReason)
+    {
+        _obstacleMotions?.Restore();
+    }
 
     /// <summary>NetworkRunner를 붙이고 Host 또는 Client로 세션을 시작한다.</summary>
     async void StartGame(GameMode mode)
     {
+        _obstacleMotions = new ObstacleMotionRegistry();
+        _obstacleMotions.CaptureLoadedScenes();
         _runner = gameObject.AddComponent<NetworkRunner>();
         _runner.ProvideInput = true;
 
@@ -153,7 +162,15 @@ public class BasicSpawner : MonoBehaviour, INetworkRunnerCallbacks
         });
 
         if (result.Ok && _runner.IsServer && GetComponent<HostPhysicsStepper>() == null)
-            _runner.AddGlobal(gameObject.AddComponent<HostPhysicsStepper>());
+        {
+            var stepper = gameObject.AddComponent<HostPhysicsStepper>();
+            stepper.SetObstacleMotions(_obstacleMotions);
+            _runner.AddGlobal(stepper);
+        }
+        else if (!result.Ok)
+        {
+            _obstacleMotions.Restore();
+        }
     }
 
     private void OnGUI()
