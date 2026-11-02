@@ -7,6 +7,7 @@ public static class TransportTraversalMenu
     private const string Armed = "TransportTraversal.Armed";
     private const string Clock = "TransportTraversal.Clock";
     private const string Record = "TransportTraversal.Record";
+    private const string ContactProbe = "TransportTraversal.ContactProbe";
     private const string StartZ = "TransportTraversal.StartZ", EndZ = "TransportTraversal.EndZ";
     static TransportTraversalMenu() { EditorApplication.playModeStateChanged += OnPlayMode; }
     [MenuItem("Tools/Transport Traversal/Run From Start")]
@@ -26,6 +27,13 @@ public static class TransportTraversalMenu
         SessionState.SetBool(Record, true);
         RunNormal();
     }
+    [MenuItem("Tools/Transport Traversal/Check Rotating Contacts")]
+    public static void CheckRotatingContacts()
+    {
+        if (EditorApplication.isPlaying) throw new System.InvalidOperationException("Stop Play Mode before contact checks.");
+        SessionState.SetBool(ContactProbe, true);
+        Run();
+    }
     public static void RunSection(float startZ, float endZ)
     {
         SessionState.SetFloat(StartZ, startZ); SessionState.SetFloat(EndZ, endZ); Run();
@@ -40,6 +48,9 @@ public static class TransportTraversalMenu
         float start = SessionState.GetFloat(StartZ, 0f), end = SessionState.GetFloat(EndZ, 0f);
         SessionState.SetFloat(StartZ, 0f); SessionState.SetFloat(EndZ, 0f);
         TransportTraversalTest.StartTest(clock, start, end);
+        bool contactProbe = SessionState.GetBool(ContactProbe, false);
+        SessionState.SetBool(ContactProbe, false);
+        if (contactProbe) TransportTraversalTest.Active.gameObject.AddComponent<RotationContactProbe>();
         bool record = SessionState.GetBool(Record, false);
         SessionState.SetBool(Record, false);
         if (record) {

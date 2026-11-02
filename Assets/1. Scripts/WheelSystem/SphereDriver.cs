@@ -188,6 +188,20 @@ public class SphereDriver : NetworkBehaviour, IAfterTick
     /// <summary>넉백(해머 등)으로 조작이 약해진 상태인지.</summary>
     public bool IsKnockedBack => knockbackTimer > 0f;
 
+    /// <summary>Host 접촉 보정. 발사/넉백 상태 없이 겹침과 안쪽 속도만 제거한다.</summary>
+    internal void ResolveObstacleContact(Vector3 direction, float distance)
+    {
+        if (Object == null || !Object.IsValid || !Object.HasStateAuthority)
+            return;
+
+        Vector3 displacement = direction * (distance + 0.001f);
+        body.position += displacement;
+        if (platform != null) platform.OffsetStepTarget(displacement);
+
+        float inward = Vector3.Dot(body.linearVelocity, direction);
+        if (inward < 0f) body.linearVelocity -= direction * inward;
+    }
+
     /// <summary>
     /// 해머 같은 강한 충격. Host SA에서만.
     /// 속도를 바로 바꾸고 회전을 새 진행 방향에 맞춘 뒤(미끄러지지 않고 굴러감), 잠시 조작을 약하게 함.

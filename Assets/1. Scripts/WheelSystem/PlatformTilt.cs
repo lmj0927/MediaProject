@@ -531,6 +531,20 @@ public class PlatformTilt : NetworkBehaviour, IAfterTick
         rotation = body.rotation;
     }
 
+    /// <summary>Host 겹침 보정 시 공과 데크의 이번 틱 물리 목표를 함께 옮긴다.</summary>
+    internal void OffsetStepTarget(Vector3 displacement)
+    {
+        if (Object == null || !Object.IsValid || !Object.HasStateAuthority)
+            return;
+
+        GetStepTargetPose(out var position, out var rotation);
+        stepTargetPosition = position + displacement;
+        stepTargetRotation = rotation;
+        hasStepTarget = true;
+        body.position += displacement;
+        body.MovePosition(stepTargetPosition);
+    }
+
     private Quaternion CalculateTargetTilt()
     {
         Vector3 offset = solver.WorldOffset;

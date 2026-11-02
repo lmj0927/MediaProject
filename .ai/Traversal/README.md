@@ -1,4 +1,19 @@
-# Transport traversal test (in progress)
+# Transport traversal test (re-scoping to actual gimmicks)
+
+**User correction, 2026-11-02:** work only on `map`; do not push or update `main`.
+Main integration is through a GitHub pull request. Local main was restored to
+origin/main cdf1bff. Preserve the user's revised scene.
+
+The older widened-Hammer and bridge-bypass tests below do **not** meet the intended
+acceptance. The target is to avoid/use actual gimmicks. The existing route still
+contains old bypass points and needs re-planning for the revised map. No genuine
+gimmick start-to-finish pass or accepted full video has been established.
+
+Current priority: **Tools > Transport Traversal > Check Rotating Contacts** tests
+private-Host contacts using actual Transport and asset mesh families. It compares
+native deck/sphere overlap against non-launch pushing, with isolated runtime
+poses. This diagnostic never counts as traversal success. Results are written
+under `RotationContacts-*`. Do not save the runtime probe's isolated scene poses.
 
 Target: `Assets/3. Scenes/InGameMap_WheelTone.unity`.
 

@@ -39,6 +39,7 @@ public class HostPhysicsStepper : SimulationBehaviour
         _obstacles?.Simulate(Runner.DeltaTime);
         Physics.SyncTransforms();
         Physics.Simulate(Runner.DeltaTime);
+        _obstacles?.ResolveContacts();
     }
 
     private void OnDisable() => Restore();
@@ -60,9 +61,11 @@ public sealed class ObstacleMotionRegistry
 {
     private readonly List<Motion> motions = new();
     private readonly HashSet<Transform> captured = new();
+    private readonly RotatingObstacleContacts contacts = new();
 
     public void CaptureLoadedScenes()
     {
+        contacts.CaptureLoadedScenes();
         for (int i = 0; i < SceneManager.sceneCount; i++)
         {
             var scene = SceneManager.GetSceneAt(i);
@@ -83,7 +86,12 @@ public sealed class ObstacleMotionRegistry
 
     public void Simulate(float dt)
     {
-        foreach (var motion in motions) motion.Simulate(dt);
+        foreach (var motion in motions) motion.Simulate(dt, contacts);
+    }
+
+    public void ResolveContacts()
+    {
+        foreach (var motion in motions) motion.ResolveContacts(contacts);
     }
 
     public void Restore()
@@ -103,6 +111,8 @@ public sealed class ObstacleMotionRegistry
         private float elapsed;
         private float delay;
         private bool initialized;
+        private readonly Collider[] colliders;
+        private readonly float radius;
 
         public Motion(Transform target, OscillatePosition position, OscillateRotation rotation, RotationScript spin)
         {
@@ -115,9 +125,21 @@ public sealed class ObstacleMotionRegistry
             if (position != null) { positionEnabled = position.enabled; position.enabled = false; }
             if (rotation != null) { rotationEnabled = rotation.enabled; rotation.enabled = false; }
             if (spin != null) { spinEnabled = spin.enabled; spin.enabled = false; }
+            if (rotationEnabled || spinEnabled)
+            {
+                var solids = new List<Collider>();
+                foreach (var c in target.GetComponentsInChildren<Collider>())
+                {
+                    if (c.isTrigger || !c.enabled) continue;
+                    solids.Add(c);
+                    radius = Mathf.Max(radius, Vector3.Distance(c.bounds.center, target.position) + c.bounds.extents.magnitude);
+                }
+                colliders = solids.ToArray();
+            }
+            else colliders = System.Array.Empty<Collider>();
         }
 
-        public void Simulate(float dt)
+        public void Simulate(float dt, RotatingObstacleContacts contacts)
         {
             if (target == null) return;
             if (!initialized)
@@ -127,17 +149,26 @@ public sealed class ObstacleMotionRegistry
                 initialized = true;
             }
 
-            if (positionEnabled)
-                target.position = startPosition + position.moveAxis.normalized * position.moveDistance * Progress(position.duration);
-            if (rotationEnabled)
-                target.rotation = startRotation * Quaternion.AngleAxis(rotation.rotationAngle * Progress(rotation.duration), rotation.rotationAxis);
+            Vector3 nextPosition = positionEnabled
+                ? startPosition + position.moveAxis.normalized * position.moveDistance * Progress(position.duration) : target.position;
+            Quaternion nextRotation = rotationEnabled
+                ? startRotation * Quaternion.AngleAxis(rotation.rotationAngle * Progress(rotation.duration), rotation.rotationAxis) : target.rotation;
+            Vector3 spinAxis = Vector3.zero;
+            float spinDegrees = 0f;
             if (spinEnabled)
             {
-                Vector3 axis = spin.rotationAxis == RotationScript.RotationAxis.X ? Vector3.right :
+                spinAxis = spin.rotationAxis == RotationScript.RotationAxis.X ? Vector3.right :
                     spin.rotationAxis == RotationScript.RotationAxis.Y ? Vector3.up : Vector3.forward;
-                target.Rotate(axis, spin.rotationSpeed * dt, Space.Self);
+                spinDegrees = spin.rotationSpeed * dt;
             }
+            if (colliders.Length > 0) contacts.Move(target, nextPosition, nextRotation, colliders, radius, spinAxis, spinDegrees);
+            else target.SetPositionAndRotation(nextPosition, nextRotation * Quaternion.AngleAxis(spinDegrees, spinAxis));
             elapsed += dt;
+        }
+
+        public void ResolveContacts(RotatingObstacleContacts contacts)
+        {
+            if (target != null && colliders.Length > 0) contacts.Resolve(target.position, radius, colliders, false);
         }
 
         private float Progress(float duration)

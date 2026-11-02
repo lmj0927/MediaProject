@@ -1,0 +1,16 @@
+{
+  "result": "Contact checks passed",
+  "notTraversal": true,
+  "branch": "map",
+  "baseCommit": "0209e100752634946def34a29bea0e981a64599a",
+  "main": "cdf1bff138d2bbd5c2d93f1008eb64f9f1ee0b89",
+  "originMain": "cdf1bff138d2bbd5c2d93f1008eb64f9f1ee0b89",
+  "sceneSha256": "3D11DB99621A142A634524A2BEE0CB2FDB1CE89785A8F5D25C9183439F67D431",
+  "caseCount": 24,
+  "pushCases": 15,
+  "maxPushResidual": 0.0,
+  "maxGroundResidual": 0.0,
+  "maxUpwardSpeed": 0.0,
+  "diagnosticRun": "RotationContacts-20261102-145554-002",
+  "sourceDocumentation": "https://docs.unity3d.com/6000.0/Documentation/ScriptReference/Physics.ComputePenetration.html"
+}
