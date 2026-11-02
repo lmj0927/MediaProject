@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: d5c2b1e2a50102a43be643f4f2146745
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 317517
+  packageName: Platformer 15 Factory - Low Poly 3D Models Pack
+  packageVersion: 2.0
+  assetPath: Assets/ithappy/Platformer_15_Factory/Scripts/Rnd_Animation.cs
+  uploadId: 771555

@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 21e4f86326d724f4298c8ecf6f54af6f
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 317517
+  packageName: Platformer 15 Factory - Low Poly 3D Models Pack
+  packageVersion: 2.0
+  assetPath: Assets/ithappy/Platformer_15_Factory/Scripts/OscillatePosition.cs
+  uploadId: 771555

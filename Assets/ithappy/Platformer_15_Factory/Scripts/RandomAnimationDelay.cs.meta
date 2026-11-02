@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 0ab143b6a36456448a68b2dfb2476e22
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 317517
+  packageName: Platformer 15 Factory - Low Poly 3D Models Pack
+  packageVersion: 2.0
+  assetPath: Assets/ithappy/Platformer_15_Factory/Scripts/RandomAnimationDelay.cs
+  uploadId: 771555
