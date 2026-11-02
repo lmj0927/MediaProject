@@ -195,11 +195,17 @@ public class SphereDriver : NetworkBehaviour, IAfterTick
             return;
 
         Vector3 displacement = direction * (distance + 0.001f);
-        body.position += displacement;
-        if (platform != null) platform.OffsetStepTarget(displacement);
+        OffsetObstacleSupport(displacement);
 
         float inward = Vector3.Dot(body.linearVelocity, direction);
         if (inward < 0f) body.linearVelocity -= direction * inward;
+    }
+
+    internal void OffsetObstacleSupport(Vector3 displacement)
+    {
+        if (Object == null || !Object.IsValid || !Object.HasStateAuthority) return;
+        body.position += displacement;
+        if (platform != null) platform.OffsetStepTarget(displacement);
     }
 
     /// <summary>

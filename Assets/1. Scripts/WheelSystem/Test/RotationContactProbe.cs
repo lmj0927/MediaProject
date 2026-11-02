@@ -59,7 +59,7 @@ public class RotationContactProbe : SimulationBehaviour, IAfterTick
             .Where(c => c != null && c.enabled && !c.isTrigger).GroupBy(c => c.sharedMesh).Select(g => g.First()).ToArray();
         registrySources = new[] { sources.First(c => c.sharedMesh.name == "obstacle_001"),
             FindObjectsByType<ithappy.OscillateRotation>(FindObjectsSortMode.None).Where(s => s.GetComponent<NetworkTransform>() != null)
-                .Select(s => s.GetComponent<MeshCollider>()).First(c => c != null && c.enabled && !c.isTrigger) };
+                .Select(s => s.GetComponent<MeshCollider>()).First(c => c != null && c.enabled && !c.isTrigger && c.sharedMesh.name == "obstacle_8_002") };
         applyPose = typeof(PlatformTilt).GetMethod("ApplyPose", BindingFlags.Instance | BindingFlags.NonPublic);
         body.useGravity = false; sphere.enabled = false; platform.enabled = false;
         stepper = test.GetComponent<HostPhysicsStepper>();
@@ -121,8 +121,8 @@ public class RotationContactProbe : SimulationBehaviour, IAfterTick
         Bounds b = source.bounds;
         radius = Vector3.Distance(b.center, source.transform.position) + b.extents.magnitude;
         bool placed = false;
-        foreach (float y in new[] { 0f, -.25f, .25f })
-        foreach (float z in new[] { 0f, -.25f, .25f })
+        foreach (float y in new[] { 0f, -.1f, .1f, -.2f, .2f, -.3f, .3f, -.4f, .4f })
+        foreach (float z in new[] { 0f, -.1f, .1f, -.2f, .2f, -.3f, .3f, -.4f, .4f })
         {
             if (placed) continue;
             Vector3 origin = new Vector3(b.max.x + 20, b.center.y + y * b.size.y, b.center.z + z * b.size.z);

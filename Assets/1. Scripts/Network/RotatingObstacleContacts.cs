@@ -5,6 +5,7 @@ using UnityEngine;
 internal sealed class RotatingObstacleContacts
 {
     private readonly List<Transport> transports = new();
+    private readonly List<(Transport transport, Vector3 point)> riders = new();
 
     public void CaptureLoadedScenes()
     {
@@ -16,15 +17,19 @@ internal sealed class RotatingObstacleContacts
     }
 
     public void Move(Transform target, Vector3 position, Quaternion rotation, Collider[] colliders, float radius,
-        Vector3 spinAxis = default, float spinDegrees = 0f)
+        Vector3 spinAxis = default, float spinDegrees = 0f, bool carrySupport = false)
     {
         Vector3 fromPosition = target.position;
         Quaternion fromRotation = target.rotation;
         float travel = Vector3.Distance(fromPosition, position) +
             (Quaternion.Angle(fromRotation, rotation) + Mathf.Abs(spinDegrees)) * Mathf.Deg2Rad * radius;
         float spacing = float.PositiveInfinity;
+        riders.Clear();
         foreach (var transport in transports)
-            if (transport.Near(position, radius + travel)) spacing = Mathf.Min(spacing, transport.Spacing);
+            if (transport.Near(position, radius + travel)) {
+                spacing = Mathf.Min(spacing, transport.Spacing);
+                if (carrySupport && transport.TrySupportPoint(colliders, out var point)) riders.Add((transport, point));
+            }
 
         int steps = float.IsPositiveInfinity(spacing) ? 1 : Mathf.Max(1, Mathf.CeilToInt(travel / spacing));
         for (int i = 1; i <= steps; i++)
@@ -32,7 +37,13 @@ internal sealed class RotatingObstacleContacts
             float t = (float)i / steps;
             Quaternion pose = Quaternion.Slerp(fromRotation, rotation, t);
             if (spinDegrees != 0f) pose *= Quaternion.AngleAxis(spinDegrees * t, spinAxis);
-            target.SetPositionAndRotation(Vector3.Lerp(fromPosition, position, t), pose);
+            Vector3 nextPosition = Vector3.Lerp(fromPosition, position, t);
+            foreach (var rider in riders) {
+                Vector3 before = target.position + target.rotation * (Quaternion.Inverse(fromRotation) * (rider.point - fromPosition));
+                Vector3 after = nextPosition + pose * (Quaternion.Inverse(fromRotation) * (rider.point - fromPosition));
+                rider.transport.Sphere.OffsetObstacleSupport(after - before);
+            }
+            target.SetPositionAndRotation(nextPosition, pose);
             Resolve(target.position, radius, colliders, true);
         }
     }
@@ -83,6 +94,23 @@ internal sealed class RotatingObstacleContacts
         public bool Near(Vector3 position, float radius) => Sphere != null && Sphere.Object != null &&
             Sphere.Object.IsValid && Sphere.Object.HasStateAuthority &&
             (body.position - position).sqrMagnitude <= (radius + reach) * (radius + reach);
+
+        public bool TrySupportPoint(Collider[] obstacles, out Vector3 point)
+        {
+            point = default;
+            if (body.linearVelocity.y > 2f) return false;
+            float nearest = sphereRadius + .6f;
+            bool found = false;
+            var ray = new Ray(body.position, Vector3.down);
+            foreach (var obstacle in obstacles) {
+                if (Physics.GetIgnoreLayerCollision(sphereCollider.gameObject.layer, obstacle.gameObject.layer) ||
+                    Physics.GetIgnoreCollision(sphereCollider, obstacle)) continue;
+                if (obstacle.Raycast(ray, out var hit, nearest) && hit.normal.y > .7f) {
+                    nearest = hit.distance; point = hit.point; found = true;
+                }
+            }
+            return found;
+        }
 
         public void Resolve(Collider[] obstacles, bool stepTarget)
         {

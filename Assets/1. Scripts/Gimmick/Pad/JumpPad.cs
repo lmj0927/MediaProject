@@ -22,6 +22,7 @@ public class JumpPad : WheelPadBase
 
     [Networked] private int LaunchCount { get; set; }
     private int shownLaunchCount;
+    internal event System.Action<JumpPad, Rigidbody> Launched;
     // 이보다 덜 기울었으면 평평한 것으로 봄
     private const float FlatThreshold = 1f;
 
@@ -90,6 +91,7 @@ public class JumpPad : WheelPadBase
         Vector3 horizontal = new Vector3(v.x, 0f, v.z) * momentumKeep + PushDirection * horizontalSpeed;
         rb.linearVelocity = horizontal + Vector3.up * vy;
         LaunchCount++;
+        Launched?.Invoke(this, rb);
 
         if (!matchSpin) return;
 
