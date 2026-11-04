@@ -78,9 +78,18 @@ Shader "MediaProject/Island Textured Lit"
             #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Fog.hlsl"
             #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/ProbeVolumeVariants.hlsl"
             #define REQUIRES_WORLD_SPACE_POS_INTERPOLATOR
-            // Keep the native Lit constant buffer layout so all passes use the same SRP batcher layout.
+            // 기본 Lit 상수 버퍼 구성을 그대로 씀
             #include "Packages/com.unity.render-pipelines.universal/Shaders/LitInput.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/Shaders/LitForwardPass.hlsl"
+
+            // 카메라와 판 사이를 가리는 물체를 점무늬로 비움(CameraOcclusionFade가 렌더러별로 넣음, 0 = 그대로)
+            float _OcclusionFade;
+            void OcclusionDitherClip(float2 pixel)
+            {
+                const float bayer[16] = { 0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5 };
+                uint2 p = (uint2)pixel % 4;
+                clip((bayer[p.y * 4 + p.x] + 0.5) / 16.0 - _OcclusionFade);
+            }
 
             half SampleTriplanar(TEXTURE2D_PARAM(tex, samp), float3 p, half3 w)
             {
@@ -93,12 +102,13 @@ Shader "MediaProject/Island Textured Lit"
             {
                 UNITY_SETUP_INSTANCE_ID(input);
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
+                OcclusionDitherClip(input.positionCS.xy);
                 SurfaceData surface;
                 InitializeStandardLitSurfaceData(input.uv, surface);
                 InputData lighting;
                 InitializeInputData(input, surface.normalTS, lighting);
 
-                // Object-relative projection follows moving props; scale keeps texture density in world meters.
+                // 물체 기준으로 투영하고 스케일을 곱해 월드 미터 단위 텍스처 밀도로 맞춤
                 float4x4 objectToWorld = GetObjectToWorldMatrix();
                 float3 scale = float3(length(objectToWorld._m00_m10_m20),
                                       length(objectToWorld._m01_m11_m21),
@@ -123,7 +133,7 @@ Shader "MediaProject/Island Textured Lit"
                 surface.albedo *= clamp(1 + variation * 2, 0.55h, 1.45h);
                 surface.smoothness = saturate(surface.smoothness - variation * 0.2h);
 
-                // Height derivatives add shallow relief without changing the mesh or colliders.
+                // 높이 미분으로 얕은 요철을 더함
                 float3 dpdx = ddx(input.positionWS);
                 float3 dpdy = ddy(input.positionWS);
                 float3 r1 = cross(dpdy, lighting.normalWS);
@@ -166,10 +176,25 @@ Shader "MediaProject/Island Textured Lit"
             HLSLPROGRAM
             #pragma target 3.5
             #pragma vertex DepthOnlyVertex
-            #pragma fragment DepthOnlyFragment
+            #pragma fragment IslandDepthOnlyFragment
             #pragma multi_compile_instancing
             #include "Packages/com.unity.render-pipelines.universal/Shaders/LitInput.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/Shaders/DepthOnlyPass.hlsl"
+
+            // 카메라와 판 사이를 가리는 물체를 점무늬로 비움(CameraOcclusionFade가 렌더러별로 넣음, 0 = 그대로)
+            float _OcclusionFade;
+            void OcclusionDitherClip(float2 pixel)
+            {
+                const float bayer[16] = { 0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5 };
+                uint2 p = (uint2)pixel % 4;
+                clip((bayer[p.y * 4 + p.x] + 0.5) / 16.0 - _OcclusionFade);
+            }
+
+            half IslandDepthOnlyFragment(Varyings input) : SV_TARGET
+            {
+                OcclusionDitherClip(input.positionCS.xy);
+                return DepthOnlyFragment(input);
+            }
             ENDHLSL
         }
         Pass
@@ -181,11 +206,34 @@ Shader "MediaProject/Island Textured Lit"
             HLSLPROGRAM
             #pragma target 3.5
             #pragma vertex DepthNormalsVertex
-            #pragma fragment DepthNormalsFragment
+            #pragma fragment IslandDepthNormalsFragment
             #pragma multi_compile_instancing
             #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/RenderingLayers.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/Shaders/LitInput.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/Shaders/LitDepthNormalsPass.hlsl"
+
+            // 카메라와 판 사이를 가리는 물체를 점무늬로 비움(CameraOcclusionFade가 렌더러별로 넣음, 0 = 그대로)
+            float _OcclusionFade;
+            void OcclusionDitherClip(float2 pixel)
+            {
+                const float bayer[16] = { 0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5 };
+                uint2 p = (uint2)pixel % 4;
+                clip((bayer[p.y * 4 + p.x] + 0.5) / 16.0 - _OcclusionFade);
+            }
+
+            void IslandDepthNormalsFragment(Varyings input, out half4 outNormalWS : SV_Target0
+            #ifdef _WRITE_RENDERING_LAYERS
+                , out uint outRenderingLayers : SV_Target1
+            #endif
+            )
+            {
+                OcclusionDitherClip(input.positionCS.xy);
+                DepthNormalsFragment(input, outNormalWS
+            #ifdef _WRITE_RENDERING_LAYERS
+                    , outRenderingLayers
+            #endif
+                );
+            }
             ENDHLSL
         }
         Pass
