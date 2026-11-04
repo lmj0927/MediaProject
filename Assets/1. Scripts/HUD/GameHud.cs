@@ -69,7 +69,7 @@ public class GameHud : MonoBehaviour
     [SerializeField] private float topMargin = 16f;
 
     [Tooltip("진행바 아래 나침반을 보여줌. 끄면 거리 표시가 진행바 바로 아래로 올라감.")]
-    [SerializeField] private bool showCompass = true;
+    [SerializeField] private bool showCompass = false;
     [SerializeField] private float edgeInset = 70f;
 
     private RectTransform root;
