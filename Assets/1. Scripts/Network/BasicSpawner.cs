@@ -18,6 +18,7 @@ public class BasicSpawner : MonoBehaviour, INetworkRunnerCallbacks
     [SerializeField] private Transform _spawnPoint;
 
     private NetworkRunner _runner;
+    private RoomSession _roomSession;
     private ObstacleMotionRegistry _obstacleMotions;
     private InputAction _moveAction;
     private InputAction _jumpAction;
@@ -109,12 +110,23 @@ public class BasicSpawner : MonoBehaviour, INetworkRunnerCallbacks
     /// <summary>Host만 플레이어 프리팹을 Spawn하고 Input Authority를 부여한다.</summary>
     public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
     {
-        if (runner.IsServer)
+        if (!runner.IsServer || _spawnedCharacters.ContainsKey(player))
+            return;
+
+        if (_roomSession == null)
         {
-            Vector3 spawnPosition = _spawnPoint.position;
-            NetworkObject networkPlayerObject = runner.Spawn(_playerPrefab, spawnPosition, Quaternion.identity, player);
-            _spawnedCharacters.Add(player, networkPlayerObject);
+            _spawnedCharacters.Add(player, runner.Spawn(_playerPrefab, _spawnPoint.position, Quaternion.identity, player));
+            return;
         }
+
+        if (!_roomSession.TryGetSelection(player, out var selection))
+            return;
+
+        // Space the initial avatars around the scene's existing spawn point.
+        Vector3 offset = new Vector3(selection.Character % 3 - 1, 0f, selection.Character / 3 - 0.5f) * 1.15f;
+        var avatar = runner.Spawn(selection.Prefab, _spawnPoint.position + _spawnPoint.rotation * offset,
+            Quaternion.identity, player);
+        _spawnedCharacters.Add(player, avatar);
     }
 
     /// <summary>퇴장한 플레이어 아바타를 Despawn한다.</summary>
@@ -140,6 +152,36 @@ public class BasicSpawner : MonoBehaviour, INetworkRunnerCallbacks
         _obstacleMotions?.Restore();
     }
 
+    public void AttachRoomRunner(NetworkRunner runner, RoomSession room)
+    {
+        if (_runner != null)
+            return;
+
+        _roomSession = room;
+        _runner = runner;
+        _obstacleMotions = new ObstacleMotionRegistry();
+        _obstacleMotions.CaptureLoadedScenes();
+        runner.AddCallbacks(this);
+        runner.ProvideInput = true;
+
+        if (runner.IsServer)
+        {
+            AddHostPhysicsStepper();
+            foreach (var player in runner.ActivePlayers)
+                OnPlayerJoined(runner, player);
+        }
+    }
+
+    private void AddHostPhysicsStepper()
+    {
+        if (GetComponent<HostPhysicsStepper>() != null)
+            return;
+
+        var stepper = gameObject.AddComponent<HostPhysicsStepper>();
+        stepper.SetObstacleMotions(_obstacleMotions);
+        _runner.AddGlobal(stepper);
+    }
+
     /// <summary>NetworkRunner를 붙이고 Host 또는 Client로 세션을 시작한다.</summary>
     async void StartGame(GameMode mode)
     {
@@ -161,12 +203,8 @@ public class BasicSpawner : MonoBehaviour, INetworkRunnerCallbacks
             SceneManager = gameObject.AddComponent<NetworkSceneManagerDefault>()
         });
 
-        if (result.Ok && _runner.IsServer && GetComponent<HostPhysicsStepper>() == null)
-        {
-            var stepper = gameObject.AddComponent<HostPhysicsStepper>();
-            stepper.SetObstacleMotions(_obstacleMotions);
-            _runner.AddGlobal(stepper);
-        }
+        if (result.Ok && _runner.IsServer)
+            AddHostPhysicsStepper();
         else if (!result.Ok)
         {
             _obstacleMotions.Restore();
@@ -175,7 +213,7 @@ public class BasicSpawner : MonoBehaviour, INetworkRunnerCallbacks
 
     private void OnGUI()
     {
-        if (_runner == null)
+        if (_runner == null && RoomSession.Active == null)
         {
             if (GUI.Button(new Rect(0, 0, 200, 40), "Host"))
                 StartGame(GameMode.Host);
