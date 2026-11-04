@@ -29,7 +29,7 @@ public static class HudMesh
         vh.AddTriangle(i, i + 2, i + 3);
     }
 
-    /// <summary>볼록 다각형 채우기. 꼭짓점마다 색을 정할 수 있음(선형 그라데이션은 정확히 표현됨).</summary>
+    /// <summary>볼록 다각형 채우기. 꼭짓점마다 색을 정할 수 있음.</summary>
     public static void Polygon(VertexHelper vh, Vector2[] points, Func<Vector2, Color32> color)
     {
         Vector2 center = Vector2.zero;
@@ -115,6 +115,36 @@ public static class HudMesh
         }
     }
 
+    /// <summary>
+    /// 꼭짓점마다 색을 정하는 원. 반지름·각도로 잘게 나눠 그라데이션을 표현함.
+    /// color에는 원 중심 기준, 반지름 1로 맞춘 위치(x 오른쪽, y 위쪽)가 들어감.
+    /// </summary>
+    public static void ShadedCircle(VertexHelper vh, Vector2 center, float radius, Func<Vector2, Color32> color, int angleSegments = 40, int radiusSegments = 8)
+    {
+        for (int r = 0; r < radiusSegments; r++)
+        {
+            float r0 = r / (float)radiusSegments, r1 = (r + 1) / (float)radiusSegments;
+            for (int a = 0; a < angleSegments; a++)
+            {
+                float g0 = a * Mathf.PI * 2f / angleSegments, g1 = (a + 1) * Mathf.PI * 2f / angleSegments;
+                var d0 = new Vector2(Mathf.Cos(g0), Mathf.Sin(g0));
+                var d1 = new Vector2(Mathf.Cos(g1), Mathf.Sin(g1));
+                Vector2 p00 = d0 * r0, p01 = d0 * r1, p11 = d1 * r1, p10 = d1 * r0;
+                Quad(vh, center + p00 * radius, center + p01 * radius, center + p11 * radius, center + p10 * radius,
+                    color(p00), color(p01), color(p11), color(p10));
+            }
+        }
+    }
+
+    /// <summary>볼록한 돔 색. 왼쪽 위에서 빛을 받아 밝고, 가장자리로 갈수록 어두워짐. p는 반지름 1 기준 위치.</summary>
+    public static Color32 Dome(Vector2 p, Color32 baseColor, Color32 lightColor, float alpha)
+    {
+        float light = Mathf.Clamp01(1f - Vector2.Distance(p, new Vector2(-0.45f, 0.55f)) / 1.6f);
+        Color32 c = Lerp(baseColor, lightColor, Mathf.Pow(light, 1.6f));
+        float dark = 1f - 0.25f * Mathf.Pow(Mathf.Clamp01(p.magnitude), 3f);
+        return new Color32((byte)(c.r * dark), (byte)(c.g * dark), (byte)(c.b * dark), (byte)Mathf.RoundToInt(Mathf.Clamp01(alpha) * 255f));
+    }
+
     public static void Line(VertexHelper vh, Vector2 from, Vector2 to, float width, Color32 color)
     {
         Vector2 dir = to - from;
@@ -194,6 +224,7 @@ public static class HudColors
     public static readonly Color32 Monster = new Color32(140, 60, 170, 255);
     public static readonly Color32 Bomb = new Color32(45, 45, 52, 255);
     public static readonly Color32 Dim = new Color32(70, 70, 80, 220);
+    public static readonly Color32 DomeLight = new Color32(90, 100, 160, 255);
 
     /// <summary>캐릭터 이름(프리팹 이름)으로 색을 고름. 모르는 이름은 흰색.</summary>
     public static Color32 ForCharacter(string objectName)
