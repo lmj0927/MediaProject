@@ -57,6 +57,25 @@ public class BalanceTestRig : NetworkBehaviour, IAfterTick
     [Tooltip("모퉁이(중간 웨이포인트)를 지날 때 허용하는 속도(m/s).")]
     [Min(0f)][SerializeField] private float cornerSpeed = 4f;
 
+    [Header("Path Drive")]
+    [Tooltip("코스 경로 주행(StartPath)에서 바라보는 앞쪽 거리(m).")]
+    [Min(1f)][SerializeField] private float pathLookAhead = 18f;
+
+    [Tooltip("코스 경로 주행에서 앞 커브를 미리 보는 거리(m). 이 안의 휘는 정도로 속도를 정함.")]
+    [Min(1f)][SerializeField] private float pathCurveLook = 45f;
+
+    [Tooltip("코스 경로 주행에서 커브를 돌 때 허용하는 옆 가속도(m/s²). 작을수록 커브 앞에서 더 줄임.")]
+    [Min(0.1f)][SerializeField] private float pathCornerAccel = 1.2f;
+
+    [Tooltip("코스 경로에서 옆으로 벗어난 만큼 되돌아가는 세기(1/s).")]
+    [Min(0f)][SerializeField] private float pathHold = 0.5f;
+
+    [Tooltip("코스 경로에서 이 거리(m) 넘게 벗어나면 속도를 줄이고 두 배로 되돌아감.")]
+    [Min(0f)][SerializeField] private float pathEdgeWarn = 9f;
+
+    [Tooltip("코스 경로 주행에서 장애물을 피해 옆으로 비켜 가는 최대 거리(m).")]
+    [Min(0f)][SerializeField] private float pathAvoidMax = 11f;
+
     [Tooltip("팀이 예상하는 제동 감속(m/s²). 남은 거리와 이 값으로 언제 제동할지 정함.\n" +
              "실제 휠보다 크게 잡으면 늦게 제동해 지나치고, 작게 잡으면 일찍 멈춤.")]
     [Min(0.1f)][SerializeField] private float expectedBrake = 2f;
@@ -268,6 +287,9 @@ public class BalanceTestRig : NetworkBehaviour, IAfterTick
     private float legStartTime;
     private Vector3 plannedLean;
     private Vector3 plannedDirection;
+    private CourseRoute pathRoute;
+    private float pathAlong, pathEnd;
+    private readonly List<(float along, float lat, float clearance)> pathAvoid = new();
 
     // 트롤. 팀은 트롤의 존재를 모르고 평소처럼 판단하며, 결과로 생긴 속도 오차를 더 몰려서 메움.
     private enum TrollTactic { Counter, Sideways, Center }
@@ -867,10 +889,63 @@ public class BalanceTestRig : NetworkBehaviour, IAfterTick
         strategyActive = true;
     }
 
+    /// <summary>
+    /// 코스 경로(CourseRoute)의 from~to(m) 구간을 따라가 끝에서 멈추게 함.
+    /// 경로 위 앞쪽 지점을 계속 바라보고, 앞 커브가 휜 만큼 미리 속도를 줄이며, 옆으로 벗어나면 되돌아감.
+    /// </summary>
+    public void StartPath(CourseRoute route, float from, float to, bool withTroll = false)
+    {
+        if (route == null) return;
+        StartRoute(new[] { route.PointAtLength(to) }, withTroll);
+        if (!strategyActive) return;
+        pathRoute = route;
+        pathAlong = from;
+        pathEnd = Mathf.Min(to, route.TotalLength);
+        strategyReport.AppendLine($"코스 경로 {from:F0}~{pathEnd:F0}m");
+    }
+
+    /// <summary>
+    /// 코스 경로 주행에서 비켜 갈 장애물 위치를 정함. 휠 중심이 각 지점에서 clearance(m)보다 가까이 지나가지 않도록 옆으로 비킴.
+    /// </summary>
+    public void SetPathAvoid(CourseRoute route, Vector3[] points, float clearance)
+    {
+        pathAvoid.Clear();
+        if (route == null || points == null) return;
+        foreach (var p in points)
+        {
+            float best = 0f, bestD = float.MaxValue;
+            for (float s = 0f; s <= route.TotalLength; s += 2f)
+            {
+                float d = (Flat(route.PointAtLength(s)) - Flat(p)).sqrMagnitude;
+                if (d < bestD) { bestD = d; best = s; }
+            }
+            Vector3 here = Flat(route.PointAtLength(best));
+            Vector3 tangent = Flat(route.PointAtLength(Mathf.Min(best + 2f, route.TotalLength)) - route.PointAtLength(Mathf.Max(best - 2f, 0f))).normalized;
+            pathAvoid.Add((best, Vector3.Dot(Flat(p) - here, Vector3.Cross(Vector3.up, tangent)), clearance));
+        }
+    }
+
+    /// <summary>앞쪽 장애물을 피하려고 경로 중심에서 비켜 갈 옆 거리(m). 피할 것이 없으면 0.</summary>
+    private float PathAvoidOffset(float offset)
+    {
+        float target = 0f, nearest = float.MaxValue;
+        foreach (var a in pathAvoid)
+        {
+            float ahead = a.along - pathAlong;
+            if (ahead < -a.clearance || ahead > pathLookAhead + 25f || ahead >= nearest) continue;
+            if (Mathf.Abs(a.lat) >= a.clearance) continue;
+            float sign = Mathf.Abs(a.lat) > 0.5f ? -Mathf.Sign(a.lat) : (offset >= 0f ? 1f : -1f);
+            target = Mathf.Clamp(a.lat + sign * a.clearance, -pathAvoidMax, pathAvoidMax);
+            nearest = ahead;
+        }
+        return target;
+    }
+
     /// <summary>전략 주행을 멈춤. 더미는 그 자리에 섬.</summary>
     public void StopStrategy()
     {
         strategyActive = false;
+        pathRoute = null;
         gatePhase = GatePhase.Off;
         gateHammer = null;
         if (trollIndex >= 0 && trollIndex < dummies.Count) dummies[trollIndex].autoStamp = false;
@@ -889,6 +964,7 @@ public class BalanceTestRig : NetworkBehaviour, IAfterTick
     private void UpdateStrategy()
     {
         if (waypoints.Count == 0) { strategyActive = false; return; }
+        if (pathRoute != null) { UpdatePath(); return; }
 
         float now = (float)Runner.SimulationTime;
         Vector3 position = wheelBody.position;
@@ -960,6 +1036,12 @@ public class BalanceTestRig : NetworkBehaviour, IAfterTick
             }
         }
 
+        DriveTeam(now, desired, velocity, desiredSpeed, toGoal, distance);
+    }
+
+    /// <summary>원하는 속도(desired)와 실제 속도 차이로 판을 기울일 위치를 정하고, 더미들이 그 자리로 몰려가게 함.</summary>
+    private void DriveTeam(float now, Vector3 desired, Vector3 velocity, float desiredSpeed, Vector3 toGoal, float distance)
+    {
         Vector3 error = desired - velocity;
         // 미리 더하는 쏠림은 빨리 달릴 때만 씀. 멈추거나 모퉁이를 돌 때 쓰면 제동이 약해져 목표 주위를 오감.
         float feedForward = leanFeedForward * Mathf.InverseLerp(feedForwardFrom, cruiseSpeed, desiredSpeed);
@@ -996,6 +1078,77 @@ public class BalanceTestRig : NetworkBehaviour, IAfterTick
             }
             MoveDummy(i, spot.x, spot.y);
         }
+    }
+
+    /// <summary>코스 경로 주행의 판단. 경로 위 지금 위치를 찾고, 앞쪽 지점과 앞 커브로 원하는 속도와 방향을 정함.</summary>
+    private void UpdatePath()
+    {
+        float now = (float)Runner.SimulationTime;
+        Vector3 position = Flat(wheelBody.position);
+        Vector3 velocity = Flat(wheelBody.linearVelocity);
+
+        // 경로 위 지금 위치: 직전 위치 근처에서 가장 가까운 점
+        float best = pathAlong, bestD = float.MaxValue;
+        for (float s = Mathf.Max(0f, pathAlong - 10f); s <= Mathf.Min(pathEnd, pathAlong + 40f); s += 1f)
+        {
+            float d = (Flat(pathRoute.PointAtLength(s)) - position).sqrMagnitude;
+            if (d < bestD) { bestD = d; best = s; }
+        }
+        pathAlong = best;
+
+        Vector3 here = Flat(pathRoute.PointAtLength(pathAlong));
+        Vector3 tangent = Flat(pathRoute.PointAtLength(Mathf.Min(pathAlong + 2f, pathRoute.TotalLength)) - pathRoute.PointAtLength(Mathf.Max(pathAlong - 2f, 0f))).normalized;
+        Vector3 side = Vector3.Cross(Vector3.up, tangent);
+        float offset = Vector3.Dot(position - here, side);
+
+        float aim = Mathf.Min(pathAlong + pathLookAhead, pathEnd);
+        bool last = aim >= pathEnd - 0.5f;
+        float avoid = PathAvoidOffset(offset);
+        Vector3 toGoal = Flat(pathRoute.PointAtLength(aim)) + side * avoid - position;
+
+        if (last && toGoal.magnitude < waypointRadius && velocity.magnitude < 1f)
+        {
+            strategyReport.AppendLine($"코스 경로 끝 도착: {now - legStartTime:F1}초");
+            StopStrategy();
+            SpreadToBalance();
+            return;
+        }
+
+        if (gateHammers.Count > 0)
+        {
+            float gateDistance = toGoal.magnitude;
+            if (UpdateGate(now, position, velocity, ref toGoal, ref gateDistance, ref last)) return;
+            if (gatePhase == GatePhase.Approach)
+            {
+                float approachSpeed = Mathf.Min(cruiseSpeed, Mathf.Sqrt(2f * expectedBrake * Mathf.Max(0f, gateDistance - 1f)));
+                DriveTeam(now, (gateDistance > 0.01f ? toGoal / gateDistance : tangent) * approachSpeed, velocity, approachSpeed, toGoal, gateDistance);
+                return;
+            }
+        }
+
+        // 앞 커브: 5m마다 방향 변화로 반지름을 구해, 그 커브에서 낼 수 있는 속도까지 미리 줄임
+        float limit = cruiseSpeed;
+        Vector3 prev = tangent;
+        for (float s = pathAlong + 5f; s <= Mathf.Min(pathAlong + pathCurveLook, pathEnd - 1f); s += 5f)
+        {
+            Vector3 t = Flat(pathRoute.PointAtLength(s + 1f) - pathRoute.PointAtLength(s - 1f)).normalized;
+            float turn = Vector3.Angle(prev, t) * Mathf.Deg2Rad;
+            prev = t;
+            if (turn < 1e-3f) continue;
+            float cornerV = Mathf.Sqrt(pathCornerAccel * 5f / turn);
+            limit = Mathf.Min(limit, Mathf.Sqrt(cornerV * cornerV + 2f * expectedBrake * Mathf.Max(0f, s - pathAlong - 5f)));
+        }
+        float endSpeed = Mathf.Sqrt(2f * expectedBrake * Mathf.Max(0f, pathEnd - pathAlong - 1f));
+        float desiredSpeed = Mathf.Min(limit, endSpeed);
+        bool nearEdge = Mathf.Abs(offset) > Mathf.Max(pathEdgeWarn, Mathf.Abs(avoid) + 2f);
+        if (nearEdge) desiredSpeed = Mathf.Min(desiredSpeed, turnSpeed + 2f);
+
+        Vector3 dir = toGoal.sqrMagnitude > 1e-4f ? toGoal.normalized : tangent;
+        Vector3 desired = dir * desiredSpeed;
+        float hold = nearEdge ? pathHold * 2f : pathHold;
+        desired -= side * Mathf.Clamp((offset - avoid) * hold, -(desiredSpeed + 2f), desiredSpeed + 2f);
+
+        DriveTeam(now, desired, velocity, desiredSpeed, toGoal, toGoal.magnitude);
     }
 
     // ---- 팀 내려찍기 ----
