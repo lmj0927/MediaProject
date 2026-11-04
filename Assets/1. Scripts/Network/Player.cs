@@ -467,6 +467,26 @@ public class Player : NetworkBehaviour, IHoldable, ILaunchable
         ReleaseHeld(Vector3.zero, thrown: false);
     }
 
+    internal void RespawnAt(Vector3 position)
+    {
+        if (!Object.HasStateAuthority || _cc == null) return;
+
+        DropHeld();
+        if (IsHeldNet) ReleaseFromHolder();
+        IsLaunched = false;
+        IsStamping = false;
+        _launchGraceTimer = TickTimer.None;
+        EndStampWeight();
+        EndStampRecover();
+        _cc.Teleport(position, Quaternion.identity);
+        _cc.Velocity = Vector3.zero;
+        _cc.Grounded = false;
+        GroundedNet = false;
+        _carrier?.ResetAnchor();
+        _weightSource?.SetSimulatedPosition(position);
+        ClearPlatformRideState();
+    }
+
     /// <summary>나를 든 홀더에게서 강제로 풀려남. 홀더가 없으면 스스로 놓인 상태로 전환.</summary>
     private void ReleaseFromHolder()
     {

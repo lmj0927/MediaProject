@@ -68,6 +68,8 @@ public class CenterOfMassSolver : NetworkBehaviour
 
     public bool HasOccupants => TotalWeight > Mathf.Epsilon;
 
+    internal void ResetOffset() => smoothedOffset = smoothVelocity = Vector3.zero;
+
     /// <summary>현재 하중을 싣고 있는 것으로 판정된 대상들.</summary>
     public IReadOnlyList<WeightSource> Occupants => occupants;
 

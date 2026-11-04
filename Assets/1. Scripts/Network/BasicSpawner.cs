@@ -16,10 +16,15 @@ public class BasicSpawner : MonoBehaviour, INetworkRunnerCallbacks
     [SerializeField] private NetworkPrefabRef _playerPrefab;
     [SerializeField] private InputActionAsset _inputActions;
     [SerializeField] private Transform _spawnPoint;
+    [Header("Transport recovery")]
+    [SerializeField] private PlatformTilt _transport;
+    [SerializeField] private Transform _waterSurface;
+    [SerializeField] private Transform[] _checkpoints;
 
     private NetworkRunner _runner;
     private RoomSession _roomSession;
     private ObstacleMotionRegistry _obstacleMotions;
+    private TransportRecovery _transportRecovery;
     private InputAction _moveAction;
     private InputAction _jumpAction;
     private InputAction _holdAction;
@@ -28,6 +33,12 @@ public class BasicSpawner : MonoBehaviour, INetworkRunnerCallbacks
 
     /// <summary>접속 중인 플레이어별 스폰된 아바타.</summary>
     private readonly Dictionary<PlayerRef, NetworkObject> _spawnedCharacters = new Dictionary<PlayerRef, NetworkObject>();
+
+    private void Awake()
+    {
+        if (_transport != null && _waterSurface != null && _spawnPoint != null)
+            _transportRecovery = new TransportRecovery(_transport, _waterSurface, _spawnPoint, _checkpoints, _spawnedCharacters);
+    }
 
     private void OnEnable()
     {
@@ -115,16 +126,27 @@ public class BasicSpawner : MonoBehaviour, INetworkRunnerCallbacks
 
         if (_roomSession == null)
         {
-            _spawnedCharacters.Add(player, runner.Spawn(_playerPrefab, _spawnPoint.position, Quaternion.identity, player));
+            Vector3 spawn = _transportRecovery?.GetSpawnPosition() ?? _spawnPoint.position;
+            _spawnedCharacters.Add(player, runner.Spawn(_playerPrefab, spawn, Quaternion.identity, player));
             return;
         }
 
         if (!_roomSession.TryGetSelection(player, out var selection))
             return;
 
-        // Space the initial avatars around the scene's existing spawn point.
-        Vector3 offset = new Vector3(selection.Character % 3 - 1, 0f, selection.Character / 3 - 0.5f) * 1.15f;
-        var avatar = runner.Spawn(selection.Prefab, _spawnPoint.position + _spawnPoint.rotation * offset,
+        Vector3 position;
+        if (_transportRecovery != null)
+        {
+            int playerCount = 0;
+            foreach (var _ in runner.ActivePlayers) playerCount++;
+            position = _transportRecovery.GetGroupSpawnPosition(_spawnedCharacters.Count, playerCount);
+        }
+        else
+        {
+            Vector3 offset = new Vector3(selection.Character % 3 - 1, 0f, selection.Character / 3 - 0.5f) * 1.15f;
+            position = _spawnPoint.position + _spawnPoint.rotation * offset;
+        }
+        var avatar = runner.Spawn(selection.Prefab, position,
             Quaternion.identity, player);
         _spawnedCharacters.Add(player, avatar);
     }
@@ -179,6 +201,7 @@ public class BasicSpawner : MonoBehaviour, INetworkRunnerCallbacks
 
         var stepper = gameObject.AddComponent<HostPhysicsStepper>();
         stepper.SetObstacleMotions(_obstacleMotions);
+        stepper.SetTransportRecovery(_transportRecovery);
         _runner.AddGlobal(stepper);
     }
 

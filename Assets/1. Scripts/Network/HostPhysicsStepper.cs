@@ -16,8 +16,10 @@ public class HostPhysicsStepper : SimulationBehaviour
     private SimulationMode _originalMode;
     private int _lastSimulatedTick = -1;
     private ObstacleMotionRegistry _obstacles;
+    private TransportRecovery _transportRecovery;
 
     public void SetObstacleMotions(ObstacleMotionRegistry obstacles) => _obstacles = obstacles;
+    internal void SetTransportRecovery(TransportRecovery recovery) => _transportRecovery = recovery;
 
     public override void FixedUpdateNetwork()
     {
@@ -40,6 +42,7 @@ public class HostPhysicsStepper : SimulationBehaviour
         Physics.SyncTransforms();
         Physics.Simulate(Runner.DeltaTime);
         _obstacles?.ResolveContacts();
+        _transportRecovery?.Step();
     }
 
     private void OnDisable() => Restore();
