@@ -98,6 +98,7 @@ public class GameCamera : MonoBehaviour
 #endif
 
     private Camera cam;
+    private TransportSpeedFeel speedFeel;
     private Transform wheelVisual;
     private Transform localPlayer;
     private bool followPlayer;
@@ -129,7 +130,14 @@ public class GameCamera : MonoBehaviour
     /// <summary>지금 계산된 카메라 거리(m).</summary>
     public float CurrentDistance { get; private set; }
 
-    private void Awake() => cam = GetComponent<Camera>();
+    private void Awake()
+    {
+        cam = GetComponent<Camera>();
+        speedFeel = GetComponent<TransportSpeedFeel>();
+    }
+
+    // 속도 FOV를 거리 자동 맞춤이 상쇄하지 않게 평상시 시야각으로 배치함.
+    private float FramingFieldOfView => cam.fieldOfView - (speedFeel != null ? speedFeel.FieldOfViewOffset : 0f);
 
     private void OnEnable() => MMCameraShakeEvent.Register(OnShake);
 
@@ -221,7 +229,7 @@ public class GameCamera : MonoBehaviour
     /// </summary>
     private void Pose(Vector3 center, float distance, float screenY, out Vector3 position, out Quaternion rotation)
     {
-        float tanHalf = Mathf.Tan(cam.fieldOfView * 0.5f * Mathf.Deg2Rad);
+        float tanHalf = Mathf.Tan(FramingFieldOfView * 0.5f * Mathf.Deg2Rad);
         float raise = Mathf.Atan((0.5f - screenY) * 2f * tanHalf) * Mathf.Rad2Deg;
         position = center + Quaternion.Euler(pitch, yaw, 0f) * (Vector3.back * distance);
         rotation = Quaternion.Euler(pitch - raise, yaw, 0f);
@@ -244,7 +252,7 @@ public class GameCamera : MonoBehaviour
     {
         Pose(center, distance, screenY, out var position, out var rotation);
         Quaternion inverse = Quaternion.Inverse(rotation);
-        float tanHalf = Mathf.Tan(cam.fieldOfView * 0.5f * Mathf.Deg2Rad);
+        float tanHalf = Mathf.Tan(FramingFieldOfView * 0.5f * Mathf.Deg2Rad);
         float aspect = Mathf.Max(0.1f, cam.aspect);
         for (int i = 0; i < 24; i++)
         {

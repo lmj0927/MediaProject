@@ -6,12 +6,21 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
+    path: Assets/3. Scenes/InGame/Main.unity
+    guid: d56ce2b66a184cc449511f6e3f1ed115
+  - enabled: 1
+    path: Assets/3. Scenes/InGame/Lobby.unity
+    guid: 04cd708f433b67147961eacafa6fbcfd
+  - enabled: 1
+    path: Assets/3. Scenes/InGame/InGameMap.unity
+    guid: f7765f5ff92d14b4f9fbc900754091ee
+  - enabled: 0
     path: Assets/3. Scenes/PhotonTest.unity
     guid: 99c9720ab356a0642a771bea13969a05
-  - enabled: 1
+  - enabled: 0
     path: Assets/Photon/FusionDemos/Fusion-Intro-Shared/Scenes/FusionIntroShared.unity
     guid: 0c93e24ebcb1fed489eeaf2f36cfb925
-  - enabled: 1
+  - enabled: 0
     path: Assets/Photon/FusionMenu/FusionSampleMenu.unity
     guid: 74c3b330900a03442806ce69f1fe5955
   m_configObjects:

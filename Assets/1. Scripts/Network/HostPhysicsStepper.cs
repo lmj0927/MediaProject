@@ -16,8 +16,10 @@ public class HostPhysicsStepper : SimulationBehaviour
     private SimulationMode _originalMode;
     private int _lastSimulatedTick = -1;
     private ObstacleMotionRegistry _obstacles;
+    private TransportRecovery _transportRecovery;
 
     public void SetObstacleMotions(ObstacleMotionRegistry obstacles) => _obstacles = obstacles;
+    internal void SetTransportRecovery(TransportRecovery recovery) => _transportRecovery = recovery;
 
     public override void FixedUpdateNetwork()
     {
@@ -40,6 +42,7 @@ public class HostPhysicsStepper : SimulationBehaviour
         Physics.SyncTransforms();
         Physics.Simulate(Runner.DeltaTime);
         _obstacles?.ResolveContacts();
+        _transportRecovery?.Step();
     }
 
     private void OnDisable() => Restore();
@@ -162,7 +165,7 @@ public sealed class ObstacleMotionRegistry
                 spinDegrees = spin.rotationSpeed * dt;
             }
             if (colliders.Length > 0) contacts.Move(target, nextPosition, nextRotation, colliders, radius, spinAxis, spinDegrees,
-                rotationEnabled && !spinEnabled);
+                rotationEnabled && !spinEnabled, dt);
             else target.SetPositionAndRotation(nextPosition, nextRotation * Quaternion.AngleAxis(spinDegrees, spinAxis));
             elapsed += dt;
         }

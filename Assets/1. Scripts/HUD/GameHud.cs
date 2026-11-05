@@ -373,7 +373,7 @@ public class GameHud : MonoBehaviour
         speedBar = Create<SpeedBarGraphic>("Speed Bar", Vector2.zero, new Vector2(0.5f, 0.5f), dialCenter + new Vector2(0f, -132f), new Vector2(210f, 22f));
         speedText = CreateText("Speed", root, Vector2.zero, new Vector2(0.5f, 0.5f), dialCenter + new Vector2(0f, -170f), new Vector2(220f, 40f), 28f, TextAlignmentOptions.Center);
         level = Create<LevelGraphic>("Tilt Level", Vector2.zero, new Vector2(0.5f, 0.5f), dialCenter + new Vector2(168f, 0f), new Vector2(130f, 130f));
-        progressBar = Create<ProgressBarGraphic>("Course Progress", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -topMargin), new Vector2(640f, 46f));
+        progressBar = Create<ProgressBarGraphic>("Course Progress", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -topMargin), new Vector2(700f, 46f));
         compass = Create<CompassGraphic>("Next Target", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -topMargin - 64f), new Vector2(86f, 86f));
         distanceText = CreateText("Next Distance", root, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -topMargin - 154f), new Vector2(240f, 40f), 30f, TextAlignmentOptions.Center);
     }

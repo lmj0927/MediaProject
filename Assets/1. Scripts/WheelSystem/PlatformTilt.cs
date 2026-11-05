@@ -379,6 +379,25 @@ public class PlatformTilt : NetworkBehaviour, IAfterTick
         ApplyPose(PoseTilt);
     }
 
+    internal void ResetForRespawn(Vector3 wheelPosition)
+    {
+        currentTilt = previousRotation = Quaternion.identity;
+        NetTilt = currentTilt;
+        dipAngle = dipPeak = 0f;
+        dipRising = false;
+        angularVelocity = Vector3.zero;
+        solver.ResetOffset();
+
+        Vector3 position = wheelPosition + Vector3.up * HeightOffset;
+        body.position = position;
+        body.rotation = currentTilt;
+        transform.SetPositionAndRotation(position, currentTilt);
+        stepTargetPosition = position;
+        stepTargetRotation = currentTilt;
+        hasStepTarget = true;
+        modelVisual.ResetTo(position, currentTilt);
+    }
+
     void IAfterTick.AfterTick()
     {
         if (Object.HasStateAuthority)

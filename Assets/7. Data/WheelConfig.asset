@@ -13,10 +13,10 @@ MonoBehaviour:
   m_Name: WheelConfig
   m_EditorClassIdentifier: Assembly-CSharp::WheelSystem.WheelConfig
   maxOffsetRadius: 3
-  maxTiltAngle: 10
+  maxTiltAngle: 20
   tiltResponsiveness: 4
   maxAngularSpeed: 3
-  torqueGain: 5
+  torqueGain: 3
   maxSpinSpeed: 20
   idleDamping: 3
   maxTiltAngularSpeed: 25

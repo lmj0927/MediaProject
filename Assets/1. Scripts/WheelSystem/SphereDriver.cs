@@ -70,6 +70,18 @@ public class SphereDriver : NetworkBehaviour, IAfterTick
         Simulate();
     }
 
+    internal void RespawnAt(Vector3 position)
+    {
+        GetComponent<NetworkTransform>().Teleport(position, Quaternion.identity);
+        body.position = position;
+        body.rotation = Quaternion.identity;
+        body.linearVelocity = Vector3.zero;
+        body.angularVelocity = Vector3.zero;
+        knockbackTimer = 0f;
+        IsGrounded = false;
+        visual.ResetTo(position, Quaternion.identity);
+    }
+
     void IAfterTick.AfterTick()
     {
         if (Object.HasStateAuthority)
