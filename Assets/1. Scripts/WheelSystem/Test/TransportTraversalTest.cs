@@ -46,8 +46,10 @@ public class TransportTraversalTest : SimulationBehaviour
         if (!Application.isPlaying || Active != null) return;
         Directory.CreateDirectory(Folder);
         var scene = SceneManager.GetActiveScene();
-        if (scene.path != "Assets/3. Scenes/InGameMap_WheelTone.unity")
-            throw new InvalidOperationException("Open InGameMap_WheelTone before starting traversal.");
+#if UNITY_EDITOR
+        if (UnityEditor.AssetDatabase.AssetPathToGUID(scene.path) != RoomSession.GameSceneGuid)
+            throw new InvalidOperationException("Open the game map before starting traversal.");
+#endif
         var go = new GameObject("Transport Traversal Test (runtime only)");
         var test = go.AddComponent<TransportTraversalTest>();
         Active = test;

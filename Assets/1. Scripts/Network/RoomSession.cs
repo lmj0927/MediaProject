@@ -15,11 +15,14 @@ public sealed class RoomSession : MonoBehaviour, INetworkRunnerCallbacks
     public const int CodeLength = 6;
     public const int NicknameLength = 16;
     private const string CodeAlphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-    private const string LobbyPath = "Assets/3. Scenes/Lobby.unity";
-    private const string GamePath = "Assets/3. Scenes/InGameMap_WheelTone.unity";
-    private const string TitleName = "Main";
+#if UNITY_EDITOR
+    internal const string LobbySceneGuid = "04cd708f433b67147961eacafa6fbcfd";
+    internal const string GameSceneGuid = "f7765f5ff92d14b4f9fbc900754091ee";
+#endif
 
     private NetworkRunner _runner;
+    private int _titleSceneIndex;
+    private int _gameSceneIndex;
     private readonly Dictionary<PlayerRef, (int Character, NetworkObject Prefab)> _selections = new();
     private bool _connected;
     private bool _attachGameplay;
@@ -47,7 +50,7 @@ public sealed class RoomSession : MonoBehaviour, INetworkRunnerCallbacks
         if (_returnToTitle)
         {
             _returnToTitle = false;
-            SceneManager.LoadScene(TitleName);
+            SceneManager.LoadScene(_titleSceneIndex);
             Destroy(gameObject);
             return;
         }
@@ -88,15 +91,17 @@ public sealed class RoomSession : MonoBehaviour, INetworkRunnerCallbacks
         return message;
     }
 
-    public async Task<string> Connect(bool host, string code, int capacity, string nickname)
+    public async Task<string> Connect(bool host, string code, int capacity, string nickname,
+        int titleSceneIndex, int lobbySceneIndex, int gameSceneIndex)
     {
         Nickname = nickname;
-        int lobbyIndex = SceneUtility.GetBuildIndexByScenePath(LobbyPath);
-        if (lobbyIndex < 0 || SceneUtility.GetBuildIndexByScenePath(GamePath) < 0)
+        if (titleSceneIndex < 0 || lobbySceneIndex < 0 || gameSceneIndex < 0)
         {
             Destroy(gameObject);
-            return "빌드 씬 목록에 로비와 게임 맵을 등록해 주세요.";
+            return "빌드 씬 목록에 타이틀, 로비와 게임 맵을 등록해 주세요.";
         }
+        _titleSceneIndex = titleSceneIndex;
+        _gameSceneIndex = gameSceneIndex;
 
         var settings = PhotonAppSettings.Global.AppSettings.GetCopy();
         if (string.IsNullOrEmpty(settings.FixedRegion))
@@ -111,7 +116,7 @@ public sealed class RoomSession : MonoBehaviour, INetworkRunnerCallbacks
             _runner.AddCallbacks(this);
             var sceneInfo = new NetworkSceneInfo();
             if (host)
-                sceneInfo.AddSceneRef(SceneRef.FromIndex(lobbyIndex), LoadSceneMode.Single);
+                sceneInfo.AddSceneRef(SceneRef.FromIndex(lobbySceneIndex), LoadSceneMode.Single);
 
             try
             {
@@ -157,7 +162,7 @@ public sealed class RoomSession : MonoBehaviour, INetworkRunnerCallbacks
         }
 
         // A connection can fail after Fusion has already replaced the title scene.
-        if (SceneManager.GetActiveScene().name != TitleName)
+        if (SceneManager.GetActiveScene().buildIndex != _titleSceneIndex)
         {
             _returnMessage = error;
             _returnToTitle = true;
@@ -199,7 +204,7 @@ public sealed class RoomSession : MonoBehaviour, INetworkRunnerCallbacks
             _selections.Add(player, (character, lobby.GetCharacterPrefab(character)));
         }
         _runner.SessionInfo.IsOpen = false;
-        _runner.LoadScene(SceneRef.FromIndex(SceneUtility.GetBuildIndexByScenePath(GamePath)), LoadSceneMode.Single);
+        _runner.LoadScene(SceneRef.FromIndex(_gameSceneIndex), LoadSceneMode.Single);
     }
 
     public bool TryGetSelection(PlayerRef player, out (int Character, NetworkObject Prefab) selection) =>
@@ -214,7 +219,7 @@ public sealed class RoomSession : MonoBehaviour, INetworkRunnerCallbacks
     public void OnSceneLoadDone(NetworkRunner runner)
     {
         // Attach on the next Update, outside Fusion's callback iteration.
-        _attachGameplay = SceneManager.GetActiveScene().path == GamePath;
+        _attachGameplay = SceneManager.GetActiveScene().buildIndex == _gameSceneIndex;
     }
 
     public void OnConnectRequest(NetworkRunner runner, NetworkRunnerCallbackArgs.ConnectRequest request, byte[] token)

@@ -165,7 +165,7 @@ public sealed class ObstacleMotionRegistry
                 spinDegrees = spin.rotationSpeed * dt;
             }
             if (colliders.Length > 0) contacts.Move(target, nextPosition, nextRotation, colliders, radius, spinAxis, spinDegrees,
-                rotationEnabled && !spinEnabled);
+                rotationEnabled && !spinEnabled, dt);
             else target.SetPositionAndRotation(nextPosition, nextRotation * Quaternion.AngleAxis(spinDegrees, spinAxis));
             elapsed += dt;
         }
