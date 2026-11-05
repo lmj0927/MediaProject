@@ -38,14 +38,18 @@ public class TransportTraversalTest : SimulationBehaviour
     private Hammer[] hammers;
     private float hammerCommitUntil;
     private float movingCommitUntil;
+    private bool rotorExitAligned;
+    private bool logAligned;
 
     public static async void StartTest(float clockSpeed = 0f, float startZ = 0f, float endZ = 0f)
     {
         if (!Application.isPlaying || Active != null) return;
         Directory.CreateDirectory(Folder);
         var scene = SceneManager.GetActiveScene();
-        if (scene.path != "Assets/3. Scenes/InGameMap_WheelTone.unity")
-            throw new InvalidOperationException("Open InGameMap_WheelTone before starting traversal.");
+#if UNITY_EDITOR
+        if (UnityEditor.AssetDatabase.AssetPathToGUID(scene.path) != RoomSession.GameSceneGuid)
+            throw new InvalidOperationException("Open the game map before starting traversal.");
+#endif
         var go = new GameObject("Transport Traversal Test (runtime only)");
         var test = go.AddComponent<TransportTraversalTest>();
         Active = test;
@@ -53,7 +57,10 @@ public class TransportTraversalTest : SimulationBehaviour
         Directory.CreateDirectory(test.runDirectory);
         File.WriteAllText(Path.Combine(test.runDirectory, "scene-sha256.txt"),
             BitConverter.ToString(System.Security.Cryptography.SHA256.Create().ComputeHash(File.ReadAllBytes(scene.path))).Replace("-", ""));
-        test.route = JsonUtility.FromJson<Route>(File.ReadAllText(Path.Combine(Folder, "route.json")));
+        string routePath = Path.Combine(Folder, "route.json");
+        if (!File.Exists(routePath))
+            routePath = Path.Combine(Application.dataPath, "../Tools/Traversal/route.json");
+        test.route = JsonUtility.FromJson<Route>(File.ReadAllText(routePath));
         if (clockSpeed > 0f) test.route.clockSpeed = clockSpeed;
         test.route.sectionStartZ = startZ;
         test.route.sectionEndZ = endZ;
@@ -77,9 +84,12 @@ public class TransportTraversalTest : SimulationBehaviour
             pad.Launched += test.RecordLaunch;
         }
         foreach (var group in FindObjectsByType<ithappy.OscillateRotation>(FindObjectsSortMode.None)
-            .Where(s => s.name == "obstacle_11_002").GroupBy(s => Mathf.RoundToInt(s.transform.position.z * 10f))) {
-            float z = group.First().transform.position.z;
+            .Where(s => s.name == "obstacle_11_002" || s.name == "obstacle_8_002").GroupBy(s => Mathf.RoundToInt(s.transform.position.z * 10f))) {
+            var panel = group.First();
+            bool trapdoor = panel.name == "obstacle_8_002";
+            float z = trapdoor ? panel.GetComponent<Collider>().bounds.center.z : panel.transform.position.z;
             var use = new MovingUse { id = "MovingRow@" + z.ToString("F1", System.Globalization.CultureInfo.InvariantCulture), z = z,
+                trapdoor = trapdoor, panel = panel.transform, closedRotation = panel.transform.rotation,
                 required = startZ <= 0f || (z >= startZ && z <= endZ) };
             test.movingUses.Add(use);
             foreach (var s in group) foreach (var c in s.GetComponentsInChildren<Collider>())
@@ -165,8 +175,19 @@ public class TransportTraversalTest : SimulationBehaviour
         // Finish the lift exit before changing lanes for the following rotating blades.
         if (p.z > 3297f && p.z < 3330f && Mathf.Abs(p.x - targetX) > 4f)
             desired.z = Mathf.Clamp((3305f - p.z) * .7f, -4f, desired.z);
+        // Turn toward the narrow log bridge while still on the rotor island.
+        if (p.z > 2856f && p.z < 2890f && !rotorExitAligned) {
+            rotorExitAligned = p.z >= 2868f && Mathf.Abs(p.x + 9.3f) <= 2.5f && Mathf.Abs(body.linearVelocity.x) <= 1.25f;
+            if (!rotorExitAligned) desired.z = Mathf.Clamp((2874f - p.z) * .7f, -4f, desired.z);
+        }
+        // Settle on the right log's centre before the ground drops into the two-log crossing.
+        if (p.z > 3448f && p.z < 3485f && !logAligned) {
+            logAligned = p.z >= 3460f && Mathf.Abs(p.x - 12f) <= 2.5f && Mathf.Abs(body.linearVelocity.x) <= 1f;
+            if (!logAligned) desired.z = Mathf.Clamp((3462f - p.z) * .7f, -4f, desired.z);
+        }
         Vector3 velocity = body.linearVelocity; velocity.y = 0;
         Vector3 command = Vector3.ClampMagnitude((desired - velocity) / 6f, 1f);
+        if (!sphere.IsGrounded) command = Vector3.zero;
         bias = Vector3.MoveTowards(bias, command * platform.EffectiveOffsetRadius,
             5f * dt); // virtual occupant movement limited to 5 m/s on the deck
         solver.SetExternalBias(bias);
@@ -237,15 +258,29 @@ public class TransportTraversalTest : SimulationBehaviour
         if (p.z < movingCommitUntil || desired.z <= 0f) return;
         var next = movingUses.Where(row => row.z > p.z + 12f && row.z < p.z + 65f).OrderBy(row => row.z).FirstOrDefault();
         if (next == null) return;
-        float stop = next.z - 30f;
+        float stop = next.z - (next.trapdoor ? 23f : 30f);
         if (p.z < stop - 15f) return;
-        var ray = new Ray(new Vector3(p.x, 180f, next.z - 15f), Vector3.down);
+        var ray = new Ray(new Vector3(p.x, 180f, next.trapdoor ? next.z : next.z - 15f), Vector3.down);
         float height = float.NegativeInfinity;
         foreach (var pair in movingColliders)
             if (pair.Value == next && pair.Key.Raycast(ray, out var hit, 180f) && hit.normal.y > .7f) height = Mathf.Max(height, hit.point.y);
         float rise = height - (p.y - platform.SphereRadius);
-        if (rise < 3.5f && rise > -12f && p.z >= stop - 3f && Mathf.Abs(body.linearVelocity.z) < .5f) {
-            movingCommitUntil = next.z - 11f;
+        float alignmentMetric = next.trapdoor ? Quaternion.Angle(next.closedRotation, next.panel.rotation) : rise;
+        if (Elapsed - next.riseSampleTime >= .25f) {
+            next.approaching = !float.IsNaN(next.previousRise) && alignmentMetric < next.previousRise - .02f;
+            next.previousRise = alignmentMetric;
+            next.riseSampleTime = Elapsed;
+        }
+        bool aligning = next.trapdoor ? next.approaching && alignmentMetric < 2.5f :
+            !supportedRows.Any(row => row != next) || next.approaching;
+        bool exposed = !next.trapdoor || !Physics.RaycastAll(ray, 180f, ~0, QueryTriggerInteraction.Ignore)
+            .Any(hit => hit.normal.y > .7f && hit.point.y >= height - .05f &&
+                (hit.collider.name == "BridgeCollision" || hit.collider.name.StartsWith("land_") || hit.collider.name.StartsWith("CourseConnector_")));
+        if (aligning && exposed && rise < 3.5f && rise > -12f && p.z >= stop - 3f && Mathf.Abs(body.linearVelocity.z) < .5f) {
+            // The synchronized trapdoors share a closing window. Stopping on a panel
+            // to time the next one would leave the Transport on it as it opens.
+            movingCommitUntil = next.trapdoor ? movingUses
+                .Where(row => row.trapdoor && row.z >= next.z && row.z <= next.z + 80f).Max(row => row.z) + 23f : next.z - 11f;
             File.AppendAllText(Path.Combine(runDirectory, "hazard-events.jsonl"), JsonUtility.ToJson(new GateEvent { time = Elapsed, start = next.z, end = height }) + Environment.NewLine);
         }
         else desired.z = Mathf.Clamp((stop - p.z) * .7f, -4f, desired.z);
@@ -338,8 +373,13 @@ public class TransportTraversalTest : SimulationBehaviour
         float castRadius = platform.SphereRadius * .95f;
         int count = Physics.SphereCastNonAlloc(body.position, castRadius, Vector3.down, supportHits,
             platform.SphereRadius - castRadius + .75f, ~0, QueryTriggerInteraction.Ignore);
+        float nearestSupport = float.PositiveInfinity;
         for (int i = 0; i < count; i++)
-            if (supportHits[i].normal.y > .2f && movingColliders.TryGetValue(supportHits[i].collider, out var use)) supportedRows.Add(use);
+            if (supportHits[i].normal.y > .2f && supportHits[i].collider.transform.root != sphere.transform.root)
+                nearestSupport = Mathf.Min(nearestSupport, supportHits[i].distance);
+        for (int i = 0; i < count; i++)
+            if (supportHits[i].normal.y > .2f && supportHits[i].distance <= nearestSupport + .02f &&
+                movingColliders.TryGetValue(supportHits[i].collider, out var use)) supportedRows.Add(use);
         foreach (var use in supportedRows) use.rideSeconds += dt;
     }
 
@@ -351,7 +391,13 @@ public class TransportTraversalTest : SimulationBehaviour
         public string id; public Vector3 position; public bool required, launched, airborne;
         public int launches; public float launchTime, airSeconds; public Vector3 launchPosition, launchVelocity, landingPosition;
     }
-    [Serializable] private class MovingUse { public string id; public float z, rideSeconds; public bool required; }
+    [Serializable] private class MovingUse {
+        public string id; public float z, rideSeconds; public bool required, trapdoor;
+        [NonSerialized] public Transform panel;
+        [NonSerialized] public Quaternion closedRotation;
+        [NonSerialized] public float previousRise = float.NaN, riseSampleTime;
+        [NonSerialized] public bool approaching;
+    }
     [Serializable] private class Usage { public bool mandatory, satisfied; public PadUse[] pads; public MovingUse[] movingRows; }
 
     [Serializable] private class Status { public string result, runDirectory, scene; public float elapsed, bestZ; public Vector3 position; }

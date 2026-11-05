@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>Host 회전 경로의 겹침 검사. 추가 충격 없이 Transport 전체를 밀어낸다.</summary>
+/// <summary>Host 회전 경로의 겹침 검사와 Y축 회전 기믹의 수평 반동.</summary>
 internal sealed class RotatingObstacleContacts
 {
     private readonly List<Transport> transports = new();
@@ -17,19 +17,25 @@ internal sealed class RotatingObstacleContacts
     }
 
     public void Move(Transform target, Vector3 position, Quaternion rotation, Collider[] colliders, float radius,
-        Vector3 spinAxis = default, float spinDegrees = 0f, bool carrySupport = false)
+        Vector3 spinAxis = default, float spinDegrees = 0f, bool carrySupport = false, float deltaTime = 0f)
     {
         Vector3 fromPosition = target.position;
         Quaternion fromRotation = target.rotation;
         float travel = Vector3.Distance(fromPosition, position) +
             (Quaternion.Angle(fromRotation, rotation) + Mathf.Abs(spinDegrees)) * Mathf.Deg2Rad * radius;
         float spacing = float.PositiveInfinity;
+        Vector3 angularVelocity = spinAxis == Vector3.up && deltaTime > 0f
+            ? rotation * spinAxis * (spinDegrees * Mathf.Deg2Rad / deltaTime)
+            : Vector3.zero;
         riders.Clear();
         foreach (var transport in transports)
+        {
+            transport.RotationKick = Vector3.zero;
             if (transport.Near(position, radius + travel)) {
                 spacing = Mathf.Min(spacing, transport.Spacing);
                 if (carrySupport && transport.TrySupportPoint(colliders, out var point)) riders.Add((transport, point));
             }
+        }
 
         int steps = float.IsPositiveInfinity(spacing) ? 1 : Mathf.Max(1, Mathf.CeilToInt(travel / spacing));
         for (int i = 1; i <= steps; i++)
@@ -44,20 +50,26 @@ internal sealed class RotatingObstacleContacts
                 rider.transport.Sphere.OffsetObstacleSupport(after - before);
             }
             target.SetPositionAndRotation(nextPosition, pose);
-            Resolve(target.position, radius, colliders, true);
+            Resolve(target.position, radius, colliders, true, angularVelocity);
         }
+
+        foreach (var transport in transports)
+            if (transport.RotationKick != Vector3.zero) transport.Sphere.ApplyKnockback(transport.RotationKick);
     }
 
-    public void Resolve(Vector3 position, float radius, Collider[] colliders, bool stepTarget)
+    public void Resolve(Vector3 position, float radius, Collider[] colliders, bool stepTarget, Vector3 angularVelocity = default)
     {
         foreach (var transport in transports)
-            if (transport.Near(position, radius)) transport.Resolve(colliders, stepTarget);
+            if (transport.Near(position, radius)) transport.Resolve(colliders, stepTarget, position, angularVelocity);
     }
 
     private sealed class Transport
     {
         public readonly SphereDriver Sphere;
         public readonly float Spacing;
+        public Vector3 RotationKick;
+        private const float RotationKickScale = 0.2f;
+        private const float MaxRotationKick = 1.5f;
         private readonly Rigidbody body;
         private readonly PlatformTilt platform;
         private readonly List<Shape> shapes = new();
@@ -112,7 +124,7 @@ internal sealed class RotatingObstacleContacts
             return found;
         }
 
-        public void Resolve(Collider[] obstacles, bool stepTarget)
+        public void Resolve(Collider[] obstacles, bool stepTarget, Vector3 pivot, Vector3 angularVelocity)
         {
             for (int pass = 0; pass < 8; pass++)
             {
@@ -129,6 +141,7 @@ internal sealed class RotatingObstacleContacts
                         shape.Pose(platform, stepTarget, out var position, out var rotation);
                         if (!Physics.ComputePenetration(c, position, rotation, obstacle,
                             obstacle.transform.position, obstacle.transform.rotation, out var direction, out float distance) || distance <= 0f) continue;
+                        if (angularVelocity != Vector3.zero) RecordRotationKick(position, direction, pivot, angularVelocity);
                         Sphere.ResolveObstacleContact(direction, distance);
                         ResolveSupports(obstacles);
                         changed = true;
@@ -136,6 +149,19 @@ internal sealed class RotatingObstacleContacts
                 }
                 if (!changed) break;
             }
+        }
+
+        private void RecordRotationKick(Vector3 position, Vector3 direction, Vector3 pivot, Vector3 angularVelocity)
+        {
+            direction.y = 0f;
+            if (direction.sqrMagnitude < 0.01f) return;
+            direction.Normalize();
+
+            float surfaceSpeed = Vector3.Dot(Vector3.Cross(angularVelocity, position - pivot), direction);
+            float outwardSpeed = Mathf.Max(0f, Vector3.Dot(body.linearVelocity, direction));
+            float kick = Mathf.Min(MaxRotationKick, (surfaceSpeed - outwardSpeed) * RotationKickScale);
+            // 여러 콜라이더와 중간 자세가 닿아도 한 기믹당 가장 강한 접촉만 적용한다.
+            if (kick > RotationKick.magnitude) RotationKick = direction * kick;
         }
 
         private void ResolveSupports(Collider[] obstacles)
