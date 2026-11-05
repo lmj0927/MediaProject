@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using MoreMountains.Feedbacks;
 using UnityEngine;
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
@@ -10,6 +12,8 @@ using UnityEngine.InputSystem;
 ///
 /// 조작
 ///   토글 키(기본 Tab): 판 / 내 캐릭터 중심 전환. 각도와 화면 배치는 같음.
+///
+/// 흔들림: Feel의 MMCameraShakeEvent(MMF_CameraShake 피드백)를 받아 계산한 자리 위에 흔들림을 더함.
 /// </summary>
 [DefaultExecutionOrder(1000)]
 [RequireComponent(typeof(Camera))]
@@ -76,6 +80,16 @@ public class GameCamera : MonoBehaviour
     [Tooltip("고속 화면에서 판 중심을 더 내리는 화면 높이.")]
     [Range(0f, 0.2f)][SerializeField] private float fastLowerScreenY = 0.04f;
 
+    [Header("Shake")]
+    [Tooltip("Feel 카메라 흔들림(MMF_CameraShake)을 받음.")]
+    [SerializeField] private bool receiveShake = true;
+
+    [Tooltip("받은 흔들림 세기에 곱하는 배율.")]
+    [Min(0f)][SerializeField] private float shakeScale = 1f;
+
+    [Tooltip("동시에 겹칠 수 있는 흔들림의 최대 이동 거리(m).")]
+    [Min(0f)][SerializeField] private float maxShake = 2f;
+
     [Header("Control")]
 #if ENABLE_INPUT_SYSTEM
     [SerializeField] private Key toggleKey = Key.Tab;
@@ -102,6 +116,14 @@ public class GameCamera : MonoBehaviour
     private float framingBlend;
     private float framingBlendVelocity;
 
+    private struct Shake
+    {
+        public float start, duration, frequency, seed;
+        public Vector3 amplitude;
+        public bool unscaled;
+    }
+    private readonly List<Shake> shakes = new();
+
     /// <summary>평균 낸 휠 수평 속도.</summary>
     public Vector3 AverageWheelVelocity => averageVelocity;
 
@@ -116,6 +138,50 @@ public class GameCamera : MonoBehaviour
 
     // 속도 FOV를 거리 자동 맞춤이 상쇄하지 않게 평상시 시야각으로 배치함.
     private float FramingFieldOfView => cam.fieldOfView - (speedFeel != null ? speedFeel.FieldOfViewOffset : 0f);
+
+    private void OnEnable() => MMCameraShakeEvent.Register(OnShake);
+
+    private void OnDisable()
+    {
+        MMCameraShakeEvent.Unregister(OnShake);
+        shakes.Clear();
+    }
+
+    /// <summary>Feel 카메라 흔들림 요청을 받아 목록에 넣음. 축별 세기가 없으면 전체 세기를 화면 가로·세로에 씀.</summary>
+    private void OnShake(float duration, float amplitude, float frequency, float amplitudeX, float amplitudeY, float amplitudeZ, bool infinite, MMChannelData channelData, bool useUnscaledTime)
+    {
+        if (!receiveShake || duration <= 0f) return;
+        Vector3 axes = new Vector3(amplitudeX, amplitudeY, amplitudeZ);
+        if (axes.sqrMagnitude < 1e-6f) axes = new Vector3(amplitude, amplitude, 0f);
+        shakes.Add(new Shake
+        {
+            start = useUnscaledTime ? Time.unscaledTime : Time.time,
+            duration = duration,
+            frequency = Mathf.Max(0.1f, frequency),
+            seed = Random.value * 100f,
+            amplitude = axes * shakeScale,
+            unscaled = useUnscaledTime,
+        });
+    }
+
+    /// <summary>진행 중인 흔들림을 합친 카메라 기준 이동(m). 끝날수록 약해짐.</summary>
+    private Vector3 ShakeOffset()
+    {
+        Vector3 sum = Vector3.zero;
+        for (int i = shakes.Count - 1; i >= 0; i--)
+        {
+            var s = shakes[i];
+            float t = (s.unscaled ? Time.unscaledTime : Time.time) - s.start;
+            if (t >= s.duration) { shakes.RemoveAt(i); continue; }
+            float fade = 1f - t / s.duration;
+            float p = t * s.frequency;
+            sum += Vector3.Scale(s.amplitude, new Vector3(
+                Mathf.PerlinNoise(s.seed, p) * 2f - 1f,
+                Mathf.PerlinNoise(s.seed + 17f, p) * 2f - 1f,
+                Mathf.PerlinNoise(s.seed + 31f, p) * 2f - 1f)) * fade;
+        }
+        return Vector3.ClampMagnitude(sum, maxShake);
+    }
 
     private void LateUpdate()
     {
@@ -139,6 +205,7 @@ public class GameCamera : MonoBehaviour
         CurrentDistance = distance;
 
         Pose(focus, distance, screenY, out var position, out var rotation);
+        if (shakes.Count > 0) position += rotation * ShakeOffset();
         transform.SetPositionAndRotation(position, rotation);
     }
 

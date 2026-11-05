@@ -94,6 +94,7 @@ public class Bomb : NetworkBehaviour
         var vfx = VFXManager.Instance;
         if (vfx != null)
             vfx.Play(VFXType.Bomb, position);
+        GameFeedbacks.PlayExplosion(position);
     }
 
     private void OnDrawGizmosSelected()

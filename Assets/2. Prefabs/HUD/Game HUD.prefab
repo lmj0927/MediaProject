@@ -44,13 +44,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b8db97eccf12b1441bbcac65342cdb47, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GameHud
+  balanceWidget: 1
+  showTilt: 1
+  tiltShowsLowSide: 1
+  arrowThroughCenter: 1
+  speedUnit: 0
   course: {fileID: 0}
   viewCamera: {fileID: 0}
   compassLookAhead: 15
   topSpeed: 11.8
   deckHeightRange: 4
   leanFollow: 12
+  velocityWindow: 0.25
   travelSmoothTime: 0.15
   discSize: 330
   margin: 36
+  topMargin: 16
+  showCompass: 0
   edgeInset: 70
