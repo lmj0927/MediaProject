@@ -15,10 +15,11 @@ MonoBehaviour:
   maxOffsetRadius: 3
   maxTiltAngle: 20
   tiltResponsiveness: 4
-  maxAngularSpeed: 3
+  maxAngularSpeed: 5.25
   torqueGain: 3
+  brakeFactor: 0.4
   maxSpinSpeed: 20
-  idleDamping: 3
+  idleDamping: 0.6
   maxTiltAngularSpeed: 25
   tiltResponseCurve:
     serializedVersion: 2

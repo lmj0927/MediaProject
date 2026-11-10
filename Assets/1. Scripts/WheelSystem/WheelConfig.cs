@@ -35,6 +35,10 @@ public class WheelConfig : ScriptableObject
     [Tooltip("목표 각속도까지 밀어붙이는 힘. '거기까지 가는 시간'을 정함.")]
     public float torqueGain = 8f;
 
+    [Tooltip("목표보다 빨리 돌고 있을 때 줄이는 힘의 배율. 1이면 가속과 같은 세기.\n" +
+                "낮을수록 관성이 커져 기울기가 줄어도 천천히 감속함.")]
+    [Range(0.05f, 1f)] public float brakeFactor = 1f;
+
     [Tooltip("물리 엔진이 허용하는 구체 회전 속도 상한(rad/s). 조작으로 내는 속도와는 무관함.\n" +
                 "낮으면 해머 등으로 빠르게 밀릴 때 회전이 못 따라가 구르지 않고 미끄러짐. 실제 굴러갈 수 있는 속도 ≈ 이 값 × 반지름.")]
     [Min(0.1f)] public float maxSpinSpeed = 20f;

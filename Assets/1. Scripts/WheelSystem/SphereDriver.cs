@@ -123,11 +123,26 @@ public class SphereDriver : NetworkBehaviour, IAfterTick
         Vector3 rollAxis = Vector3.Cross(Vector3.up, downhill).normalized;
         Vector3 targetAngular = rollAxis * (tilt * config.maxAngularSpeed);
 
-        Vector3 error = targetAngular - body.angularVelocity;
+        Vector3 error = ScaleBraking(targetAngular - body.angularVelocity);
         float gain = IsGrounded ? config.torqueGain : config.torqueGain * config.airControlFactor;
         gain *= ControlFactor;
 
         body.AddTorque(error * gain, ForceMode.Acceleration);
+    }
+
+    /// <summary>현재 구르는 방향의 회전을 줄이는 성분만 brakeFactor배로 약하게 함. 관성을 살리기 위함.</summary>
+    private Vector3 ScaleBraking(Vector3 error)
+    {
+        if (config.brakeFactor >= 1f) return error;
+
+        Vector3 w = body.angularVelocity;
+        w -= Vector3.Project(w, Vector3.up);
+        if (w.sqrMagnitude < 1e-4f) return error;
+
+        Vector3 dir = w.normalized;
+        float along = Vector3.Dot(error, dir);
+        if (along >= 0f) return error;
+        return error + dir * (along * (config.brakeFactor - 1f));
     }
 
     /// <summary>밀려나는 수평 속도를 줄임. 구름도 같은 비율로 줄여 미끄러지지 않게 함.</summary>
