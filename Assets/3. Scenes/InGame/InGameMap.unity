@@ -42978,7 +42978,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 659993944782438451, guid: fa853a8b3f3455d40bc0a126a098defd, type: 3}
       propertyPath: pitch
-      value: 33
+      value: 42
       objectReference: {fileID: 0}
     - target: {fileID: 659993944782438451, guid: fa853a8b3f3455d40bc0a126a098defd, type: 3}
       propertyPath: platform
