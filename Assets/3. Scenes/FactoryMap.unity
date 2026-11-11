@@ -349,6 +349,17 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CoursePoint
   checkpoint: 0
   sharpCorner: 0
+--- !u!114 &48632580 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 4420844842450650210, guid: 9a076d41b5ead6b4aa8ddd310b286cfb, type: 3}
+  m_PrefabInstance: {fileID: 1268685867}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1d55e653736843943897466344337ce6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WheelSystem.PlatformTilt
 --- !u!1 &55247482
 GameObject:
   m_ObjectHideFlags: 0
@@ -3199,6 +3210,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CoursePoint
   checkpoint: 0
   sharpCorner: 0
+--- !u!4 &887121692 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 2033938392061800087, guid: 85b9db597e295694aa029c52666c5f05, type: 3}
+  m_PrefabInstance: {fileID: 2115794069}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &896014000
 GameObject:
   m_ObjectHideFlags: 0
@@ -3588,6 +3604,37 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CoursePoint
   checkpoint: 0
   sharpCorner: 0
+--- !u!1 &959623626
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 959623627}
+  m_Layer: 0
+  m_Name: Fall Line
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &959623627
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 959623626}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 35, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &971888327
 GameObject:
   m_ObjectHideFlags: 0
@@ -3758,10 +3805,14 @@ MonoBehaviour:
   _playerPrefab:
     RawGuidValue: 92b5e8a1a0e8de04fb8edecd0139f3af
   _inputActions: {fileID: -944628639613478452, guid: d6baea6a631551a45be1c7a5a1a484b7, type: 3}
-  _spawnPoint: {fileID: 996318878}
-  _transport: {fileID: 0}
-  _waterSurface: {fileID: 0}
-  _checkpoints: []
+  _spawnPoint: {fileID: 1105637242}
+  _transport: {fileID: 48632580}
+  _waterSurface: {fileID: 959623627}
+  _checkpoints:
+  - {fileID: 887121692}
+  - {fileID: 1157757384}
+  - {fileID: 1219780004}
+  - {fileID: 731986864}
 --- !u!4 &996318878
 Transform:
   m_ObjectHideFlags: 0
@@ -4246,6 +4297,11 @@ PrefabInstance:
 Transform:
   m_CorrespondingSourceObject: {fileID: 3323186043531210556, guid: bd2a146726639fa4d8289ceb745cfc98, type: 3}
   m_PrefabInstance: {fileID: 1104908383}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &1105637242 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 1375861251908342652, guid: 9a076d41b5ead6b4aa8ddd310b286cfb, type: 3}
+  m_PrefabInstance: {fileID: 1268685867}
   m_PrefabAsset: {fileID: 0}
 --- !u!1 &1122701523
 GameObject:
@@ -9380,3 +9436,4 @@ SceneRoots:
   - {fileID: 1899628210}
   - {fileID: 1356580695}
   - {fileID: 2115794069}
+  - {fileID: 959623627}

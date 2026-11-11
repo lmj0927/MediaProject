@@ -15,10 +15,10 @@ MonoBehaviour:
   maxOffsetRadius: 3
   maxTiltAngle: 20
   tiltResponsiveness: 4
-  maxAngularSpeed: 6.75
+  maxAngularSpeed: 5.25
   torqueGain: 3
   brakeFactor: 0.4
-  driveAcceleration: 8
+  driveAcceleration: 4
   accelerationCurve:
     serializedVersion: 2
     m_Curve:
