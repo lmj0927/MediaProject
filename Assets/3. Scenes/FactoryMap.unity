@@ -2933,9 +2933,21 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1435558895}
     m_Modifications:
+    - target: {fileID: 2514498976534299586, guid: a8f041f1b1c0eca4d9bea9f3e74914b6, type: 3}
+      propertyPath: SortKey
+      value: 3712031051
+      objectReference: {fileID: 0}
     - target: {fileID: 5377993242546807841, guid: a8f041f1b1c0eca4d9bea9f3e74914b6, type: 3}
       propertyPath: SortKey
       value: 2950812747
+      objectReference: {fileID: 0}
+    - target: {fileID: 6270316751578048179, guid: a8f041f1b1c0eca4d9bea9f3e74914b6, type: 3}
+      propertyPath: SortKey
+      value: 1293883323
+      objectReference: {fileID: 0}
+    - target: {fileID: 6276894195019062368, guid: a8f041f1b1c0eca4d9bea9f3e74914b6, type: 3}
+      propertyPath: SortKey
+      value: 2566327092
       objectReference: {fileID: 0}
     - target: {fileID: 6314010620742470511, guid: a8f041f1b1c0eca4d9bea9f3e74914b6, type: 3}
       propertyPath: m_LocalPosition.x
@@ -4145,6 +4157,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Factory_Section_07
       objectReference: {fileID: 0}
+    - target: {fileID: 469299092225701673, guid: bd2a146726639fa4d8289ceb745cfc98, type: 3}
+      propertyPath: SortKey
+      value: 2691277323
+      objectReference: {fileID: 0}
     - target: {fileID: 924260466187799366, guid: bd2a146726639fa4d8289ceb745cfc98, type: 3}
       propertyPath: SortKey
       value: 832313371
@@ -4208,6 +4224,14 @@ PrefabInstance:
     - target: {fileID: 6171895380644925903, guid: bd2a146726639fa4d8289ceb745cfc98, type: 3}
       propertyPath: SortKey
       value: 2485786115
+      objectReference: {fileID: 0}
+    - target: {fileID: 6400762397744744155, guid: bd2a146726639fa4d8289ceb745cfc98, type: 3}
+      propertyPath: SortKey
+      value: 3044635586
+      objectReference: {fileID: 0}
+    - target: {fileID: 6452959550310815780, guid: bd2a146726639fa4d8289ceb745cfc98, type: 3}
+      propertyPath: SortKey
+      value: 4205167071
       objectReference: {fileID: 0}
     - target: {fileID: 7782394168615675611, guid: bd2a146726639fa4d8289ceb745cfc98, type: 3}
       propertyPath: SortKey
