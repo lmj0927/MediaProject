@@ -1381,9 +1381,17 @@ PrefabInstance:
       propertyPath: SortKey
       value: 3828005743
       objectReference: {fileID: 0}
+    - target: {fileID: 1464310844921222920, guid: a0016309199a03d4e99ed05613b48be5, type: 3}
+      propertyPath: SortKey
+      value: 1641503404
+      objectReference: {fileID: 0}
     - target: {fileID: 1600558311808434739, guid: a0016309199a03d4e99ed05613b48be5, type: 3}
       propertyPath: SortKey
       value: 3775183179
+      objectReference: {fileID: 0}
+    - target: {fileID: 2167808468496636597, guid: a0016309199a03d4e99ed05613b48be5, type: 3}
+      propertyPath: SortKey
+      value: 811472438
       objectReference: {fileID: 0}
     - target: {fileID: 2642329181969283039, guid: a0016309199a03d4e99ed05613b48be5, type: 3}
       propertyPath: m_Name
@@ -1392,6 +1400,14 @@ PrefabInstance:
     - target: {fileID: 3279519273966392414, guid: a0016309199a03d4e99ed05613b48be5, type: 3}
       propertyPath: SortKey
       value: 533161809
+      objectReference: {fileID: 0}
+    - target: {fileID: 4105611990761232750, guid: a0016309199a03d4e99ed05613b48be5, type: 3}
+      propertyPath: SortKey
+      value: 175437094
+      objectReference: {fileID: 0}
+    - target: {fileID: 5615791161606162624, guid: a0016309199a03d4e99ed05613b48be5, type: 3}
+      propertyPath: SortKey
+      value: 3117425349
       objectReference: {fileID: 0}
     - target: {fileID: 7232385201862839939, guid: a0016309199a03d4e99ed05613b48be5, type: 3}
       propertyPath: SortKey
@@ -2973,6 +2989,10 @@ PrefabInstance:
       propertyPath: SortKey
       value: 2294554849
       objectReference: {fileID: 0}
+    - target: {fileID: 9029027377604991034, guid: a8f041f1b1c0eca4d9bea9f3e74914b6, type: 3}
+      propertyPath: SortKey
+      value: 1525679650
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -3311,7 +3331,7 @@ MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
+  m_GameObject: {fileID: 397358696}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 55077ca639ff4f2fa93c9c7abdac5e8a, type: 3}
@@ -3395,7 +3415,7 @@ MonoBehaviour:
   m_Script: {fileID: -1552182283, guid: e725a070cec140c4caffb81624c8c787, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Fusion.Runtime.dll::Fusion.NetworkObject
-  SortKey: 25350665
+  SortKey: 3495332873
   SendPriority: 1
   EnableInterpolation: 1
   Flags: 262146
@@ -3727,6 +3747,9 @@ MonoBehaviour:
     RawGuidValue: 92b5e8a1a0e8de04fb8edecd0139f3af
   _inputActions: {fileID: -944628639613478452, guid: d6baea6a631551a45be1c7a5a1a484b7, type: 3}
   _spawnPoint: {fileID: 996318878}
+  _transport: {fileID: 0}
+  _waterSurface: {fileID: 0}
+  _checkpoints: []
 --- !u!4 &996318878
 Transform:
   m_ObjectHideFlags: 0
@@ -4185,6 +4208,10 @@ PrefabInstance:
     - target: {fileID: 6171895380644925903, guid: bd2a146726639fa4d8289ceb745cfc98, type: 3}
       propertyPath: SortKey
       value: 2485786115
+      objectReference: {fileID: 0}
+    - target: {fileID: 7782394168615675611, guid: bd2a146726639fa4d8289ceb745cfc98, type: 3}
+      propertyPath: SortKey
+      value: 3688476039
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -4926,6 +4953,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 802899067303652113, guid: 9a076d41b5ead6b4aa8ddd310b286cfb, type: 3}
+      propertyPath: SortKey
+      value: 3799007034
+      objectReference: {fileID: 0}
     - target: {fileID: 1166909585682831257, guid: 9a076d41b5ead6b4aa8ddd310b286cfb, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -4973,6 +5004,10 @@ PrefabInstance:
     - target: {fileID: 6121307365985332620, guid: 9a076d41b5ead6b4aa8ddd310b286cfb, type: 3}
       propertyPath: m_Name
       value: Transport
+      objectReference: {fileID: 0}
+    - target: {fileID: 7241137836186672255, guid: 9a076d41b5ead6b4aa8ddd310b286cfb, type: 3}
+      propertyPath: SortKey
+      value: 2533318602
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -5508,6 +5543,10 @@ PrefabInstance:
       propertyPath: SortKey
       value: 3735161861
       objectReference: {fileID: 0}
+    - target: {fileID: 4528191184018380199, guid: b16e849f61450bd42ae183f97592da27, type: 3}
+      propertyPath: SortKey
+      value: 1650617781
+      objectReference: {fileID: 0}
     - target: {fileID: 6520885258112824743, guid: b16e849f61450bd42ae183f97592da27, type: 3}
       propertyPath: SortKey
       value: 3813827458
@@ -5515,6 +5554,10 @@ PrefabInstance:
     - target: {fileID: 6532025238656310480, guid: b16e849f61450bd42ae183f97592da27, type: 3}
       propertyPath: SortKey
       value: 2095702857
+      objectReference: {fileID: 0}
+    - target: {fileID: 6868708595789208061, guid: b16e849f61450bd42ae183f97592da27, type: 3}
+      propertyPath: SortKey
+      value: 3650847401
       objectReference: {fileID: 0}
     - target: {fileID: 7448780551673608402, guid: b16e849f61450bd42ae183f97592da27, type: 3}
       propertyPath: m_Name
@@ -5563,6 +5606,14 @@ PrefabInstance:
     - target: {fileID: 8167374760065658339, guid: b16e849f61450bd42ae183f97592da27, type: 3}
       propertyPath: SortKey
       value: 431539958
+      objectReference: {fileID: 0}
+    - target: {fileID: 8965595921254162583, guid: b16e849f61450bd42ae183f97592da27, type: 3}
+      propertyPath: SortKey
+      value: 1178223552
+      objectReference: {fileID: 0}
+    - target: {fileID: 9173317587643863095, guid: b16e849f61450bd42ae183f97592da27, type: 3}
+      propertyPath: SortKey
+      value: 1994739843
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -7059,9 +7110,21 @@ PrefabInstance:
       propertyPath: m_Name
       value: Factory_Section_11
       objectReference: {fileID: 0}
+    - target: {fileID: 1408905483537258119, guid: af7d887fe98ed6645ad1fb2d66046061, type: 3}
+      propertyPath: SortKey
+      value: 1370847711
+      objectReference: {fileID: 0}
     - target: {fileID: 2556117803955442487, guid: af7d887fe98ed6645ad1fb2d66046061, type: 3}
       propertyPath: SortKey
       value: 889433374
+      objectReference: {fileID: 0}
+    - target: {fileID: 3567220945904826243, guid: af7d887fe98ed6645ad1fb2d66046061, type: 3}
+      propertyPath: SortKey
+      value: 3600799964
+      objectReference: {fileID: 0}
+    - target: {fileID: 4510821513260765116, guid: af7d887fe98ed6645ad1fb2d66046061, type: 3}
+      propertyPath: SortKey
+      value: 1758143112
       objectReference: {fileID: 0}
     - target: {fileID: 4588678173392200758, guid: af7d887fe98ed6645ad1fb2d66046061, type: 3}
       propertyPath: SortKey
@@ -7114,6 +7177,10 @@ PrefabInstance:
     - target: {fileID: 6810401923821737440, guid: af7d887fe98ed6645ad1fb2d66046061, type: 3}
       propertyPath: SortKey
       value: 3868109086
+      objectReference: {fileID: 0}
+    - target: {fileID: 7868769854561884061, guid: af7d887fe98ed6645ad1fb2d66046061, type: 3}
+      propertyPath: SortKey
+      value: 3724201258
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

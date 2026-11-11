@@ -128,6 +128,24 @@ public class SphereDriver : NetworkBehaviour, IAfterTick
         gain *= ControlFactor;
 
         body.AddTorque(error * gain, ForceMode.Acceleration);
+        ApplyDriveAssist(downhill, rollAxis, tilt);
+    }
+
+    /// <summary>기울인 방향으로 직접 밀어 주는 가속. 세기는 현재 속도 비율을 accelerationCurve에 넣어 정함. 구름도 같이 맞춤.</summary>
+    private void ApplyDriveAssist(Vector3 downhill, Vector3 rollAxis, float tilt)
+    {
+        if (!IsGrounded || config.driveAcceleration <= 0f) return;
+
+        float radius = Radius;
+        float maxSpeed = config.maxAngularSpeed * radius;
+        if (maxSpeed <= 0.01f) return;
+
+        float ratio = Mathf.Clamp01(Vector3.Dot(body.linearVelocity, downhill) / maxSpeed);
+        float accel = config.driveAcceleration * tilt * config.accelerationCurve.Evaluate(ratio) * ControlFactor;
+        if (accel <= 0f) return;
+
+        body.AddForce(downhill * accel, ForceMode.Acceleration);
+        body.AddTorque(rollAxis * (accel / radius), ForceMode.Acceleration);
     }
 
     /// <summary>현재 구르는 방향의 회전을 줄이는 성분만 brakeFactor배로 약하게 함. 관성을 살리기 위함.</summary>
