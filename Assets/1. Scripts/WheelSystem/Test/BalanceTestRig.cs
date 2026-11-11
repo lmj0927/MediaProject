@@ -855,7 +855,7 @@ public class BalanceTestRig : NetworkBehaviour, IAfterTick
         StopStrategy();
         if (wheelBody == null || points == null || points.Length == 0) return;
 
-        if (dummies.Count < 4)
+        if (dummies.Count == 0)
         {
             float r = DeckRadius * 0.5f;
             PlaceDummy(0, 0f, r);

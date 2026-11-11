@@ -160,6 +160,28 @@ public class Player : NetworkBehaviour, IHoldable, ILaunchable
         _wasHolding = IsHolding;
         SyncHeldControllerAndCollision();
         UpdateNameTagVisibility();
+        IgnoreObstacleCollisions();
+    }
+
+    /// <summary>
+    /// 움직이는 에셋 장애물(obstacle_)과 캐릭터 충돌을 끔. 장애물은 탈것(구체·판)만 밀고, 캐릭터는 판을 따라 움직임.
+    /// 캐릭터가 장애물에 직접 막히거나 겹침 해소로 위로 튀는 것을 막음.
+    /// </summary>
+    private void IgnoreObstacleCollisions()
+    {
+        foreach (var nt in FindObjectsByType<NetworkTransform>(FindObjectsSortMode.None))
+        {
+            if (!nt.name.StartsWith("obstacle_"))
+                continue;
+
+            foreach (var obstacle in nt.GetComponentsInChildren<Collider>(true))
+            {
+                if (obstacle.isTrigger)
+                    continue;
+                foreach (var own in _colliders)
+                    Physics.IgnoreCollision(own, obstacle);
+            }
+        }
     }
 
     /// <summary>애니/입력용 착지. 복제된 GroundedNet.</summary>

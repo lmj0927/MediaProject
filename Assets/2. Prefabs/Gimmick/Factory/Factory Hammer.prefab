@@ -200,7 +200,7 @@ MonoBehaviour:
   _visualRoot: {fileID: 3704992764301802709}
   _swingAxis: {x: 0, y: 0, z: 1}
   _amplitude: 130
-  _period: 4
+  _period: 8
   _phaseOffset: 0
   _hitRadius: 1
   _handleRadius: 1

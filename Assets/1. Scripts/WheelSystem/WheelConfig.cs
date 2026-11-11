@@ -35,6 +35,18 @@ public class WheelConfig : ScriptableObject
     [Tooltip("목표 각속도까지 밀어붙이는 힘. '거기까지 가는 시간'을 정함.")]
     public float torqueGain = 8f;
 
+    [Tooltip("목표보다 빨리 돌고 있을 때 줄이는 힘의 배율. 1이면 가속과 같은 세기.\n" +
+                "낮을수록 관성이 커져 기울기가 줄어도 천천히 감속함.")]
+    [Range(0.05f, 1f)] public float brakeFactor = 1f;
+
+    [Tooltip("최대 기울기·정지 상태에서 기울인 방향으로 직접 밀어 주는 가속도(m/s²). 초반 가속을 정함. 0이면 사용 안 함.\n" +
+                "기울기의 제곱에 비례해 들어가므로 살짝 기울였을 때는 거의 영향이 없음.")]
+    [Min(0f)] public float driveAcceleration = 0f;
+
+    [Tooltip("가속 곡선. 가로: 현재 속도 ÷ 최대 속도(0~1), 세로: 가속 배율. 속도를 올리는 힘 전체(토크 가속과 driveAcceleration)에 곱함.\n" +
+                "왼쪽이 높고 오른쪽이 낮으면 초반에 빠르게 붙고 최고속도 근처에서 완만해짐. 오른쪽 끝을 0으로 두면 최고속도에 닿지 못함.")]
+    public AnimationCurve accelerationCurve = new AnimationCurve(new Keyframe(0f, 1f), new Keyframe(1f, 1f));
+
     [Tooltip("물리 엔진이 허용하는 구체 회전 속도 상한(rad/s). 조작으로 내는 속도와는 무관함.\n" +
                 "낮으면 해머 등으로 빠르게 밀릴 때 회전이 못 따라가 구르지 않고 미끄러짐. 실제 굴러갈 수 있는 속도 ≈ 이 값 × 반지름.")]
     [Min(0.1f)] public float maxSpinSpeed = 20f;
