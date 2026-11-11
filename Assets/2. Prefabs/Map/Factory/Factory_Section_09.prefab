@@ -15895,7 +15895,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 4437762755844325378, guid: 7a5395e1fc64c65468b6ce956be83855, type: 3}
       propertyPath: _period
-      value: 4.5
+      value: 8
       objectReference: {fileID: 0}
     - target: {fileID: 4437762755844325378, guid: 7a5395e1fc64c65468b6ce956be83855, type: 3}
       propertyPath: _amplitude

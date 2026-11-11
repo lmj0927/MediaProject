@@ -67,16 +67,16 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Press
   head: {fileID: 136522396715780838}
-  period: 4
+  period: 6
   phaseOffset: 0
-  holdUp: 0.45
+  holdUp: 0.6
   slam: 0.1
   holdDown: 0.15
   travel: 14.75
   halfArea: {x: 19.720154, y: 6.380224}
   areaOffset: {x: -0.000019073486, y: 0}
   pushAlongX: 0
-  headBottom: 17.2
+  headBottom: 16
   clearance: 8
   pushSpeed: 10
   lift: 2
@@ -133,7 +133,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7528822604729299857, guid: c510e913fc82581469077ad5612895e4, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0
+      value: -1.2
       objectReference: {fileID: 0}
     - target: {fileID: 7528822604729299857, guid: c510e913fc82581469077ad5612895e4, type: 3}
       propertyPath: m_LocalPosition.z

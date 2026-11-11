@@ -123,7 +123,7 @@ public class SphereDriver : NetworkBehaviour, IAfterTick
         Vector3 rollAxis = Vector3.Cross(Vector3.up, downhill).normalized;
         Vector3 targetAngular = rollAxis * (tilt * config.maxAngularSpeed);
 
-        Vector3 error = ScaleBraking(targetAngular - body.angularVelocity);
+        Vector3 error = ShapeResponse(targetAngular - body.angularVelocity);
         float gain = IsGrounded ? config.torqueGain : config.torqueGain * config.airControlFactor;
         gain *= ControlFactor;
 
@@ -131,7 +131,10 @@ public class SphereDriver : NetworkBehaviour, IAfterTick
         ApplyDriveAssist(downhill, rollAxis, tilt);
     }
 
-    /// <summary>기울인 방향으로 직접 밀어 주는 가속. 세기는 현재 속도 비율을 accelerationCurve에 넣어 정함. 구름도 같이 맞춤.</summary>
+    /// <summary>
+    /// 기울인 방향으로 직접 밀어 주는 가속. 세기는 가속 곡선 배율을 따르고, 지금 기울기의 목표 속도(기울기 × 최대 속도)에 닿으면 끔.
+    /// 구름도 같이 맞춤.
+    /// </summary>
     private void ApplyDriveAssist(Vector3 downhill, Vector3 rollAxis, float tilt)
     {
         if (!IsGrounded || config.driveAcceleration <= 0f) return;
@@ -140,27 +143,42 @@ public class SphereDriver : NetworkBehaviour, IAfterTick
         float maxSpeed = config.maxAngularSpeed * radius;
         if (maxSpeed <= 0.01f) return;
 
-        float ratio = Mathf.Clamp01(Vector3.Dot(body.linearVelocity, downhill) / maxSpeed);
-        float accel = config.driveAcceleration * tilt * config.accelerationCurve.Evaluate(ratio) * ControlFactor;
+        float along = Vector3.Dot(body.linearVelocity, downhill);
+        if (along >= tilt * maxSpeed) return;
+
+        // 기울기의 제곱에 비례함. 살짝 기울였을 때는 거의 없고 끝까지 기울였을 때 온전히 들어감.
+        // 가속 곡선에는 방향과 무관한 지금 빠르기를 넣음. 빠르게 구르는 중에는 옆으로 미는 힘도 같이 약해짐.
+        Vector3 flat = body.linearVelocity;
+        flat.y = 0f;
+        float accel = config.driveAcceleration * tilt * tilt * AccelerationScale(flat.magnitude) * ControlFactor;
         if (accel <= 0f) return;
 
         body.AddForce(downhill * accel, ForceMode.Acceleration);
         body.AddTorque(rollAxis * (accel / radius), ForceMode.Acceleration);
     }
 
-    /// <summary>현재 구르는 방향의 회전을 줄이는 성분만 brakeFactor배로 약하게 함. 관성을 살리기 위함.</summary>
-    private Vector3 ScaleBraking(Vector3 error)
+    /// <summary>
+    /// 현재 구르는 방향 성분만 조절함. 회전을 줄이는 쪽은 brakeFactor배, 더 빨라지는 쪽은 가속 곡선 배율을 곱함.
+    /// 방향을 트는 성분은 그대로 둠.
+    /// </summary>
+    private Vector3 ShapeResponse(Vector3 error)
     {
-        if (config.brakeFactor >= 1f) return error;
-
         Vector3 w = body.angularVelocity;
         w -= Vector3.Project(w, Vector3.up);
         if (w.sqrMagnitude < 1e-4f) return error;
 
         Vector3 dir = w.normalized;
         float along = Vector3.Dot(error, dir);
-        if (along >= 0f) return error;
-        return error + dir * (along * (config.brakeFactor - 1f));
+        float scale = along < 0f ? config.brakeFactor : AccelerationScale(w.magnitude * Radius);
+        return error + dir * (along * (scale - 1f));
+    }
+
+    /// <summary>지금 속도에서의 가속 배율. 가속 곡선에 (속도 ÷ 최대 속도)를 넣은 값.</summary>
+    private float AccelerationScale(float speed)
+    {
+        float maxSpeed = config.maxAngularSpeed * Radius;
+        if (maxSpeed <= 0.01f) return 1f;
+        return Mathf.Max(0f, config.accelerationCurve.Evaluate(Mathf.Clamp01(speed / maxSpeed)));
     }
 
     /// <summary>밀려나는 수평 속도를 줄임. 구름도 같은 비율로 줄여 미끄러지지 않게 함.</summary>

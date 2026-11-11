@@ -17,34 +17,52 @@ MonoBehaviour:
   tiltResponsiveness: 4
   maxAngularSpeed: 5.25
   torqueGain: 3
-  brakeFactor: 0.4
-  driveAcceleration: 4
+  brakeFactor: 1
+  driveAcceleration: 8
   accelerationCurve:
     serializedVersion: 2
     m_Curve:
     - serializedVersion: 3
       time: 0
       value: 1
-      inSlope: 0
-      outSlope: -0.6
+      inSlope: -2.75
+      outSlope: -2.75
       tangentMode: 0
       weightedMode: 0
       inWeight: 0
-      outWeight: 0
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 0.2
+      value: 0.45
+      inSlope: -1.7916666
+      outSlope: -1.7916666
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 0.5
+      value: 0.2
+      inSlope: -0.51666665
+      outSlope: -0.51666665
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
     - serializedVersion: 3
       time: 1
-      value: 0
-      inSlope: -1.4
-      outSlope: 0
+      value: 0.1
+      inSlope: -0.2
+      outSlope: -0.2
       tangentMode: 0
       weightedMode: 0
-      inWeight: 0
+      inWeight: 0.33333334
       outWeight: 0
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
   maxSpinSpeed: 20
-  idleDamping: 0.6
+  idleDamping: 2
   maxTiltAngularSpeed: 25
   tiltResponseCurve:
     serializedVersion: 2
@@ -52,20 +70,29 @@ MonoBehaviour:
     - serializedVersion: 3
       time: 0
       value: 0
-      inSlope: 1
-      outSlope: 1
-      tangentMode: 34
+      inSlope: 0.72
+      outSlope: 0.72
+      tangentMode: 0
       weightedMode: 0
       inWeight: 0
-      outWeight: 0
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 0.5
+      value: 0.36
+      inSlope: 1
+      outSlope: 1
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
     - serializedVersion: 3
       time: 1
       value: 1
-      inSlope: 1
-      outSlope: 1
-      tangentMode: 34
+      inSlope: 1.28
+      outSlope: 1.28
+      tangentMode: 0
       weightedMode: 0
-      inWeight: 0
+      inWeight: 0.33333334
       outWeight: 0
     m_PreInfinity: 2
     m_PostInfinity: 2
@@ -77,6 +104,6 @@ MonoBehaviour:
   stampDipAngle: 5
   stampDipSpeed: 15
   stampDipReturnSpeed: 8
-  knockbackRecoverTime: 0.6
-  knockbackControl: 0.1
-  knockbackDrag: 4
+  knockbackRecoverTime: 0.5
+  knockbackControl: 0.2
+  knockbackDrag: 5
