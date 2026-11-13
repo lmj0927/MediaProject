@@ -52,7 +52,7 @@ MonoBehaviour:
   course: {fileID: 0}
   viewCamera: {fileID: 0}
   compassLookAhead: 15
-  topSpeed: 11.8
+  topSpeed: 28
   deckHeightRange: 4
   leanFollow: 12
   velocityWindow: 0.25
