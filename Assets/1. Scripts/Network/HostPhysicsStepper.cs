@@ -110,6 +110,7 @@ public sealed class ObstacleMotionRegistry
         private readonly RotationScript spin;
         private readonly Vector3 startPosition;
         private readonly Quaternion startRotation;
+        private readonly bool hasSceneOrigin;
         private readonly bool positionEnabled, rotationEnabled, spinEnabled;
         private float elapsed;
         private float delay;
@@ -123,8 +124,10 @@ public sealed class ObstacleMotionRegistry
             this.position = position;
             this.rotation = rotation;
             this.spin = spin;
-            startPosition = target.position;
-            startRotation = target.rotation;
+            hasSceneOrigin = target.TryGetComponent(out NetworkObstacleOrigin origin);
+            var pose = hasSceneOrigin ? origin.InitialPose : new Pose(target.position, target.rotation);
+            startPosition = pose.position;
+            startRotation = pose.rotation;
             if (position != null) { positionEnabled = position.enabled; position.enabled = false; }
             if (rotation != null) { rotationEnabled = rotation.enabled; rotation.enabled = false; }
             if (spin != null) { spinEnabled = spin.enabled; spin.enabled = false; }
@@ -147,6 +150,7 @@ public sealed class ObstacleMotionRegistry
             if (target == null) return;
             if (!initialized)
             {
+                if (hasSceneOrigin) target.SetPositionAndRotation(startPosition, startRotation);
                 if (positionEnabled && position.useRandomDelay) delay = Random.Range(0f, position.maxRandomDelay);
                 if (rotationEnabled && rotation.useRandomDelay) delay = Random.Range(0f, rotation.maxRandomDelay);
                 initialized = true;

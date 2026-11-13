@@ -14,6 +14,7 @@ GameObject:
   - component: {fileID: 3307005025613481260}
   - component: {fileID: 659993944782438451}
   - component: {fileID: 2157634401704132784}
+  - component: {fileID: 6781361811463900984}
   m_Layer: 0
   m_Name: Game Camera
   m_TagString: MainCamera
@@ -155,8 +156,8 @@ MonoBehaviour:
   deckHeight: 0
   deckMargin: 1
   yaw: 0
-  pitch: 41.5
-  deckScreenY: 0.31
+  pitch: 33
+  deckScreenY: 0.4
   keepWheelOnScreen: 1
   screenMargin: 0.03
   distanceScale: 1
@@ -170,6 +171,9 @@ MonoBehaviour:
   framingBlendTime: 1.5
   fastExtraDistance: 3
   fastLowerScreenY: 0.04
+  receiveShake: 1
+  shakeScale: 1
+  maxShake: 2
   toggleKey: 3
 --- !u!114 &2157634401704132784
 MonoBehaviour:
@@ -187,8 +191,44 @@ MonoBehaviour:
   fadeTime: 0.2
   holdTime: 0.4
   probeRadius: 0.4
+  nearIgnore: 1.5
   rimPoints: 8
   layers:
     serializedVersion: 2
     m_Bits: 4294967295
   fadeShader: {fileID: 4800000, guid: 7a19217ef4814664d8e7230af66b2d12, type: 3}
+--- !u!114 &6781361811463900984
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2721459271647511093}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 709ab2fb406d6e1468ac956f6cac8dac, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TransportSpeedFeel
+  transport: {fileID: 0}
+  startSpeed: 4
+  fullSpeed: 12
+  extraFieldOfView: 5
+  speedSpring:
+    Damping: 1
+    Frequency: 2
+    ClampSettings:
+      ClampMin: 0
+      ClampMinValue: 0
+      ClampMinInitial: 0
+      ClampMinBounce: 0
+      ClampMax: 0
+      ClampMaxValue: 10
+      ClampMaxInitial: 0
+      ClampMaxBounce: 0
+    SpringDebug:
+      CurrentValue: 0
+      TargetValue: 0
+    UnifiedSpring: 0
+    CurrentValueDisplay: 0
+    TargetValueDisplay: 0
+    VelocityDisplay: 0

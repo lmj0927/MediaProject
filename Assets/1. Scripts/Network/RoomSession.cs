@@ -17,7 +17,7 @@ public sealed class RoomSession : MonoBehaviour, INetworkRunnerCallbacks
     private const string CodeAlphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 #if UNITY_EDITOR
     internal const string LobbySceneGuid = "04cd708f433b67147961eacafa6fbcfd";
-    internal const string GameSceneGuid = "f7765f5ff92d14b4f9fbc900754091ee";
+    internal const string GameSceneGuid = "4a57e204d4710e14fb598aeb08b0c2d3";
 #endif
 
     private NetworkRunner _runner;

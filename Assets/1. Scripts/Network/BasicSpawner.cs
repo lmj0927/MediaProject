@@ -213,18 +213,25 @@ public class BasicSpawner : MonoBehaviour, INetworkRunnerCallbacks
         _runner = gameObject.AddComponent<NetworkRunner>();
         _runner.ProvideInput = true;
 
-        var scene = SceneRef.FromIndex(SceneManager.GetActiveScene().buildIndex);
-        var sceneInfo = new NetworkSceneInfo();
-        if (scene.IsValid)
-            sceneInfo.AddSceneRef(scene, LoadSceneMode.Additive);
-
-        var result = await _runner.StartGame(new StartGameArgs()
+        var scene = SceneManager.GetActiveScene();
+        var args = new StartGameArgs { GameMode = mode, SessionName = "TestRoom" };
+#if UNITY_EDITOR
+        if (scene.buildIndex < 0 && TryGetComponent<TraversalSceneManager>(out var previewManager))
         {
-            GameMode = mode,
-            SessionName = "TestRoom",
-            Scene = scene,
-            SceneManager = gameObject.AddComponent<NetworkSceneManagerDefault>()
-        });
+            previewManager.ScenePath = scene.path;
+            args.Scene = previewManager.GetSceneRef(scene.path);
+            args.SceneManager = previewManager;
+            args.SessionName += "-" + scene.name;
+            args.IsVisible = false;
+        }
+        else
+#endif
+        {
+            args.Scene = SceneRef.FromIndex(scene.buildIndex);
+            args.SceneManager = gameObject.AddComponent<NetworkSceneManagerDefault>();
+        }
+
+        var result = await _runner.StartGame(args);
 
         if (result.Ok && _runner.IsServer)
             AddHostPhysicsStepper();
