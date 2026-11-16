@@ -4,7 +4,10 @@ using UnityEngine;
 [DisallowMultipleComponent]
 public sealed class NetworkObstacleOrigin : MonoBehaviour
 {
+    [SerializeField] private bool rideableSpin;
+
     public Pose InitialPose { get; private set; }
+    public bool RideableSpin => rideableSpin;
 
     private void Awake()
     {

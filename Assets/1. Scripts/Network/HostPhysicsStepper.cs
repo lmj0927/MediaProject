@@ -111,6 +111,7 @@ public sealed class ObstacleMotionRegistry
         private readonly Vector3 startPosition;
         private readonly Quaternion startRotation;
         private readonly bool hasSceneOrigin;
+        private readonly bool rideableSpin;
         private readonly bool positionEnabled, rotationEnabled, spinEnabled;
         private float elapsed;
         private float delay;
@@ -125,6 +126,7 @@ public sealed class ObstacleMotionRegistry
             this.rotation = rotation;
             this.spin = spin;
             hasSceneOrigin = target.TryGetComponent(out NetworkObstacleOrigin origin);
+            rideableSpin = hasSceneOrigin && origin.RideableSpin;
             var pose = hasSceneOrigin ? origin.InitialPose : new Pose(target.position, target.rotation);
             startPosition = pose.position;
             startRotation = pose.rotation;
@@ -169,7 +171,7 @@ public sealed class ObstacleMotionRegistry
                 spinDegrees = spin.rotationSpeed * dt;
             }
             if (colliders.Length > 0) contacts.Move(target, nextPosition, nextRotation, colliders, radius, spinAxis, spinDegrees,
-                rotationEnabled && !spinEnabled, dt);
+                spinEnabled ? rideableSpin : rotationEnabled, dt);
             else target.SetPositionAndRotation(nextPosition, nextRotation * Quaternion.AngleAxis(spinDegrees, spinAxis));
             elapsed += dt;
         }

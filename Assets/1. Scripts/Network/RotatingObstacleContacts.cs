@@ -24,7 +24,8 @@ internal sealed class RotatingObstacleContacts
         float travel = Vector3.Distance(fromPosition, position) +
             (Quaternion.Angle(fromRotation, rotation) + Mathf.Abs(spinDegrees)) * Mathf.Deg2Rad * radius;
         float spacing = float.PositiveInfinity;
-        Vector3 angularVelocity = spinAxis == Vector3.up && deltaTime > 0f
+        // Rideable rotors carry the wheel without treating the tread as a striking hazard.
+        Vector3 angularVelocity = !carrySupport && spinAxis == Vector3.up && deltaTime > 0f
             ? rotation * spinAxis * (spinDegrees * Mathf.Deg2Rad / deltaTime)
             : Vector3.zero;
         riders.Clear();
