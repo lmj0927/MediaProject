@@ -12,8 +12,7 @@ public sealed class RoomLobbyView : MonoBehaviour
     [SerializeField] private UnityEngine.UI.Button _start;
     [SerializeField] private UnityEngine.UI.Button _copy;
     [SerializeField] private UnityEngine.UI.Button[] _choices;
-    [SerializeField] private UnityEngine.UI.Text[] _names;
-    [SerializeField] private UnityEngine.UI.Text[] _states;
+    [SerializeField] private UnityEngine.UI.RawImage[] _portraits;
     [SerializeField] private GameObject[] _highlights;
 
     private readonly RoomSeat[] _byCharacter = new RoomSeat[RoomLobby.CharacterCount];
@@ -60,8 +59,7 @@ public sealed class RoomLobbyView : MonoBehaviour
             bool mine = taken && seat.Player == runner.LocalPlayer;
             _choices[i].interactable = !starting && local.Player.IsRealPlayer && !local.Ready && !taken;
             _highlights[i].SetActive(mine);
-            _names[i].text = taken ? seat.Nickname.ToString() : "";
-            _states[i].text = taken ? (seat.Ready ? "준비 완료" : mine ? "내 선택" : "선택 중") : "";
+            _portraits[i].color = taken && !mine ? new Color(1f, 1f, 1f, 0.42f) : Color.white;
         }
 
         _roomStatus.text = $"{joined} / {runner.SessionInfo.MaxPlayers}명   ·   준비 {ready}명";
@@ -70,7 +68,7 @@ public sealed class RoomLobbyView : MonoBehaviour
         _start.interactable = _lobby.CanStart();
         _hint.text = starting ? "게임을 불러오는 중..." : local.Character == RoomLobby.Unselected
             ? "캐릭터를 선택해 주세요."
-            : ready == joined ? "전원 준비 완료" : "준비가 되면 아래 버튼을 눌러 주세요.";
+            : ready == joined ? "전원 준비 완료" : "";
     }
 
     public void SelectCharacter(int character)
