@@ -380,7 +380,7 @@ GameObject:
   - component: {fileID: 63274237}
   - component: {fileID: 63274238}
   m_Layer: 0
-  m_Name: North timber seat
+  m_Name: South timber seat
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -426,7 +426,7 @@ GameObject:
   - component: {fileID: 86717118}
   - component: {fileID: 86717119}
   m_Layer: 0
-  m_Name: West log mouth
+  m_Name: East log mouth
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1727,7 +1727,7 @@ GameObject:
   - component: {fileID: 270075021}
   - component: {fileID: 270075022}
   m_Layer: 0
-  m_Name: East log mouth
+  m_Name: West log mouth
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1773,7 +1773,7 @@ GameObject:
   - component: {fileID: 276039506}
   - component: {fileID: 276039507}
   m_Layer: 0
-  m_Name: South timber seat
+  m_Name: North timber seat
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1819,7 +1819,7 @@ GameObject:
   - component: {fileID: 290407139}
   - component: {fileID: 290407140}
   m_Layer: 0
-  m_Name: Align west of hammer 1
+  m_Name: Align east of hammer 1
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2121,7 +2121,7 @@ GameObject:
   - component: {fileID: 350245741}
   - component: {fileID: 350245742}
   m_Layer: 0
-  m_Name: East timber seat
+  m_Name: West timber seat
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2401,7 +2401,7 @@ GameObject:
   - component: {fileID: 381477325}
   - component: {fileID: 381477326}
   m_Layer: 0
-  m_Name: West timber seat
+  m_Name: East timber seat
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -4259,8 +4259,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 874342004}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalRotation: {x: 0, y: 1, z: 0, w: 0}
+  m_LocalPosition: {x: 92, y: 0, z: 716}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -4660,7 +4660,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 946567997}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: 0, y: 1, z: 0, w: 0}
   m_LocalPosition: {x: 46, y: 13.61, z: 358}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -5582,7 +5582,7 @@ GameObject:
   - component: {fileID: 1114476432}
   - component: {fileID: 1114476433}
   m_Layer: 0
-  m_Name: Align east of hammer 3
+  m_Name: Align west of hammer 3
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -5795,7 +5795,7 @@ GameObject:
   - component: {fileID: 1181399309}
   - component: {fileID: 1181399310}
   m_Layer: 0
-  m_Name: Turn east
+  m_Name: Turn west
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -6948,7 +6948,7 @@ GameObject:
   - component: {fileID: 1358770532}
   - component: {fileID: 1358770533}
   m_Layer: 0
-  m_Name: Turn onto east-west bridge
+  m_Name: Turn onto west-east bridge
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -7127,7 +7127,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::TraversalSceneManager
   IsSceneTakeOverEnabled: 1
   LogSceneLoadErrors: 1
-  ScenePath: Assets/3. Scenes/InGame/Steering and Log Crossing.unity
+  ScenePath: Assets/3. Scenes/InGame/MapList/Steering and Log Crossing.unity
 --- !u!1001 &1369528328
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -7834,7 +7834,7 @@ GameObject:
   - component: {fileID: 1608778630}
   - component: {fileID: 1608778631}
   m_Layer: 0
-  m_Name: Clear west of hammer 2
+  m_Name: Clear east of hammer 2
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -8575,7 +8575,7 @@ GameObject:
   - component: {fileID: 1773875030}
   - component: {fileID: 1773875031}
   m_Layer: 0
-  m_Name: Move south of hammer 2
+  m_Name: Move north of hammer 2
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -9312,7 +9312,7 @@ GameObject:
   - component: {fileID: 1901849559}
   - component: {fileID: 1901849560}
   m_Layer: 0
-  m_Name: Align for north-south bridge
+  m_Name: Align for south-north bridge
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -9906,8 +9906,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1986194961}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalRotation: {x: 0, y: 1, z: 0, w: 0}
+  m_LocalPosition: {x: 92, y: 0, z: 716}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -10109,7 +10109,7 @@ GameObject:
   - component: {fileID: 2012128794}
   - component: {fileID: 2012128795}
   m_Layer: 0
-  m_Name: Turn north
+  m_Name: Turn south
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
