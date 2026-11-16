@@ -489,12 +489,17 @@ public class Player : NetworkBehaviour, IHoldable, ILaunchable
         ReleaseHeld(Vector3.zero, thrown: false);
     }
 
+    internal void ReleaseHoldRelationships()
+    {
+        DropHeld();
+        if (IsHeldNet) ReleaseFromHolder();
+    }
+
     internal void RespawnAt(Vector3 position)
     {
         if (!Object.HasStateAuthority || _cc == null) return;
 
-        DropHeld();
-        if (IsHeldNet) ReleaseFromHolder();
+        ReleaseHoldRelationships();
         IsLaunched = false;
         IsStamping = false;
         _launchGraceTimer = TickTimer.None;

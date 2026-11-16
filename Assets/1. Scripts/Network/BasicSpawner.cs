@@ -25,11 +25,7 @@ public class BasicSpawner : MonoBehaviour, INetworkRunnerCallbacks
     private RoomSession _roomSession;
     private ObstacleMotionRegistry _obstacleMotions;
     private TransportRecovery _transportRecovery;
-    private InputAction _moveAction;
-    private InputAction _jumpAction;
-    private InputAction _holdAction;
-    private InputAction _throwAction;
-    private InputAction _stampAction;
+    private PlayerInputReader _playerInput;
 
     /// <summary>접속 중인 플레이어별 스폰된 아바타.</summary>
     private readonly Dictionary<PlayerRef, NetworkObject> _spawnedCharacters = new Dictionary<PlayerRef, NetworkObject>();
@@ -45,14 +41,7 @@ public class BasicSpawner : MonoBehaviour, INetworkRunnerCallbacks
         BindInputActions();
     }
 
-    private void OnDisable()
-    {
-        if (_inputActions == null)
-            return;
-
-        var playerMap = _inputActions.FindActionMap("Player");
-        playerMap?.Disable();
-    }
+    private void OnDisable() => _playerInput?.Disable();
 
     /// <summary>Player 액션 맵에서 Move/Jump/Hold/Throw/Stamp를 찾아 활성화한다.</summary>
     private void BindInputActions()
@@ -70,12 +59,8 @@ public class BasicSpawner : MonoBehaviour, INetworkRunnerCallbacks
             return;
         }
 
-        _moveAction = playerMap.FindAction("Move", throwIfNotFound: true);
-        _jumpAction = playerMap.FindAction("Jump", throwIfNotFound: true);
-        _holdAction = playerMap.FindAction("Hold", throwIfNotFound: true);
-        _throwAction = playerMap.FindAction("Throw", throwIfNotFound: true);
-        _stampAction = playerMap.FindAction("Stamp", throwIfNotFound: true);
-        playerMap.Enable();
+        _playerInput = new PlayerInputReader(playerMap);
+        _playerInput.Enable();
     }
 
     public void OnConnectedToServer(NetworkRunner runner) { }
@@ -89,30 +74,8 @@ public class BasicSpawner : MonoBehaviour, INetworkRunnerCallbacks
     /// 매 틱 로컬 입력을 NetworkInputData로 채워 Runner에 전달한다.
     /// 시뮬/권한 처리는 Player.FixedUpdateNetwork에서 한다.
     /// </summary>
-    public void OnInput(NetworkRunner runner, NetworkInput input)
-    {
-        var data = new NetworkInputData();
-
-        if (_moveAction != null)
-        {
-            var move = _moveAction.ReadValue<Vector2>();
-            data.direction = new Vector3(move.x, 0f, move.y);
-        }
-
-        if (_jumpAction != null)
-            data.buttons.Set(PlayerInputButton.Jump, _jumpAction.IsPressed());
-
-        if (_holdAction != null)
-            data.buttons.Set(PlayerInputButton.Hold, _holdAction.IsPressed());
-
-        if (_throwAction != null)
-            data.buttons.Set(PlayerInputButton.Throw, _throwAction.IsPressed());
-
-        if (_stampAction != null)
-            data.buttons.Set(PlayerInputButton.Stamp, _stampAction.IsPressed());
-
-        input.Set(data);
-    }
+    public void OnInput(NetworkRunner runner, NetworkInput input) =>
+        input.Set(_playerInput?.Read() ?? default);
 
     public void OnInputMissing(NetworkRunner runner, PlayerRef player, NetworkInput input) { }
     public void OnObjectEnterAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player) { }
@@ -213,18 +176,25 @@ public class BasicSpawner : MonoBehaviour, INetworkRunnerCallbacks
         _runner = gameObject.AddComponent<NetworkRunner>();
         _runner.ProvideInput = true;
 
-        var scene = SceneRef.FromIndex(SceneManager.GetActiveScene().buildIndex);
-        var sceneInfo = new NetworkSceneInfo();
-        if (scene.IsValid)
-            sceneInfo.AddSceneRef(scene, LoadSceneMode.Additive);
-
-        var result = await _runner.StartGame(new StartGameArgs()
+        var scene = SceneManager.GetActiveScene();
+        var args = new StartGameArgs { GameMode = mode, SessionName = "TestRoom" };
+#if UNITY_EDITOR
+        if (scene.buildIndex < 0 && TryGetComponent<TraversalSceneManager>(out var previewManager))
         {
-            GameMode = mode,
-            SessionName = "TestRoom",
-            Scene = scene,
-            SceneManager = gameObject.AddComponent<NetworkSceneManagerDefault>()
-        });
+            previewManager.ScenePath = scene.path;
+            args.Scene = previewManager.GetSceneRef(scene.path);
+            args.SceneManager = previewManager;
+            args.SessionName += "-" + scene.name;
+            args.IsVisible = false;
+        }
+        else
+#endif
+        {
+            args.Scene = SceneRef.FromIndex(scene.buildIndex);
+            args.SceneManager = gameObject.AddComponent<NetworkSceneManagerDefault>();
+        }
+
+        var result = await _runner.StartGame(args);
 
         if (result.Ok && _runner.IsServer)
             AddHostPhysicsStepper();

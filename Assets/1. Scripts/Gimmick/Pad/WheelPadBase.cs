@@ -22,7 +22,7 @@ public abstract class WheelPadBase : NetworkBehaviour
     [Min(0f)][SerializeField] private float contactTolerance = 0.3f;
 
     private BoxCollider area;
-    private readonly Collider[] hits = new Collider[16];
+    private Collider[] hits = new Collider[16];
     private readonly HashSet<Rigidbody> affected = new();
 
     /// <summary>장판의 forward를 수평으로 눕힌 방향.</summary>
@@ -60,6 +60,13 @@ public abstract class WheelPadBase : NetworkBehaviour
 
         int count = Physics.OverlapBoxNonAlloc(
             center, halfExtents, hits, rotation, detectionMask, QueryTriggerInteraction.Ignore);
+        // 큰 장판은 지형 콜라이더가 먼저 채운 버퍼에서 휠을 놓칠 수 있다.
+        while (count == hits.Length)
+        {
+            hits = new Collider[hits.Length * 2];
+            count = Physics.OverlapBoxNonAlloc(
+                center, halfExtents, hits, rotation, detectionMask, QueryTriggerInteraction.Ignore);
+        }
 
         affected.Clear();
 

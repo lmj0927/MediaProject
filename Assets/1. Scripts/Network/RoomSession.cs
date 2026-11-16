@@ -7,6 +7,7 @@ using Fusion;
 using Fusion.Photon.Realtime;
 using Fusion.Sockets;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 
 public sealed class RoomSession : MonoBehaviour, INetworkRunnerCallbacks
@@ -17,10 +18,12 @@ public sealed class RoomSession : MonoBehaviour, INetworkRunnerCallbacks
     private const string CodeAlphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 #if UNITY_EDITOR
     internal const string LobbySceneGuid = "04cd708f433b67147961eacafa6fbcfd";
-    internal const string GameSceneGuid = "f7765f5ff92d14b4f9fbc900754091ee";
+    internal const string GameSceneGuid = "4a57e204d4710e14fb598aeb08b0c2d3";
 #endif
 
     private NetworkRunner _runner;
+    private RoomLobby _practiceLobby;
+    private PlayerInputReader _practiceInput;
     private int _titleSceneIndex;
     private int _gameSceneIndex;
     private readonly Dictionary<PlayerRef, (int Character, NetworkObject Prefab)> _selections = new();
@@ -41,6 +44,7 @@ public sealed class RoomSession : MonoBehaviour, INetworkRunnerCallbacks
 
     private void OnDestroy()
     {
+        StopPracticeInput(_practiceLobby);
         if (Active == this)
             Active = null;
     }
@@ -203,12 +207,30 @@ public sealed class RoomSession : MonoBehaviour, INetworkRunnerCallbacks
             int character = lobby.GetSeat(player).Character;
             _selections.Add(player, (character, lobby.GetCharacterPrefab(character)));
         }
+        lobby.DespawnPracticeAvatars();
         _runner.SessionInfo.IsOpen = false;
         _runner.LoadScene(SceneRef.FromIndex(_gameSceneIndex), LoadSceneMode.Single);
     }
 
     public bool TryGetSelection(PlayerRef player, out (int Character, NetworkObject Prefab) selection) =>
         _selections.TryGetValue(player, out selection);
+
+    internal void StartPracticeInput(RoomLobby lobby, InputActionAsset actions)
+    {
+        _practiceLobby = lobby;
+        _practiceInput = new PlayerInputReader(actions.FindActionMap("Player", throwIfNotFound: true));
+        _practiceInput.Enable();
+        lobby.Runner.ProvideInput = true;
+    }
+
+    internal void StopPracticeInput(RoomLobby lobby)
+    {
+        if (_practiceLobby != lobby)
+            return;
+        _practiceInput?.Disable();
+        _practiceInput = null;
+        _practiceLobby = null;
+    }
 
     public void Leave()
     {
@@ -244,7 +266,11 @@ public sealed class RoomSession : MonoBehaviour, INetworkRunnerCallbacks
     public void OnCustomAuthenticationResponse(NetworkRunner runner, Dictionary<string, object> data) { }
     public void OnDisconnectedFromServer(NetworkRunner runner, NetDisconnectReason reason) { }
     public void OnHostMigration(NetworkRunner runner, HostMigrationToken token) { }
-    public void OnInput(NetworkRunner runner, NetworkInput input) { }
+    public void OnInput(NetworkRunner runner, NetworkInput input)
+    {
+        if (_practiceInput != null)
+            input.Set(_practiceInput.Read());
+    }
     public void OnInputMissing(NetworkRunner runner, PlayerRef player, NetworkInput input) { }
     public void OnObjectEnterAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player) { }
     public void OnObjectExitAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player) { }
@@ -257,6 +283,6 @@ public sealed class RoomSession : MonoBehaviour, INetworkRunnerCallbacks
     public void OnPlayerLeft(NetworkRunner runner, PlayerRef player) { }
     public void OnReliableDataProgress(NetworkRunner runner, PlayerRef player, ReliableKey key, float progress) { }
     public void OnReliableDataReceived(NetworkRunner runner, PlayerRef player, ReliableKey key, ReadOnlySpan<byte> data) { }
-    public void OnSceneLoadStart(NetworkRunner runner) { }
+    public void OnSceneLoadStart(NetworkRunner runner) => StopPracticeInput(_practiceLobby);
     public void OnSessionListUpdated(NetworkRunner runner, List<SessionInfo> sessions) { }
 }
