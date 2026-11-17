@@ -136,6 +136,7 @@ public class Player : NetworkBehaviour, IHoldable, ILaunchable
     public Transform HoldPoint => _holdPoint;
     public bool CanBeHeld => !IsHeldNet;
     public bool IsHolding => HeldObjectId.IsValid;
+    internal Transform NameTagAnchor => _nameTag != null ? _nameTag.transform : null;
 
     private void Awake()
     {
@@ -159,7 +160,7 @@ public class Player : NetworkBehaviour, IHoldable, ILaunchable
         _wasGrounded = GroundedNet;
         _wasHolding = IsHolding;
         SyncHeldControllerAndCollision();
-        UpdateNameTagVisibility();
+        SetNameTagSuppressed(false);
         IgnoreObstacleCollisions();
     }
 
@@ -193,15 +194,15 @@ public class Player : NetworkBehaviour, IHoldable, ILaunchable
     private bool IsStandingOnDeck => _carrier != null && _carrier.IsStandingOnDeck;
 
     /// <summary>
-    /// 로컬에서 이 아바타의 Input Authority일 때만 이름표를 켠다.
-    /// (Host/Join 각각 자기 캐릭터만 보임. 네트워크 동기화 불필요)
+    /// 로컬 이름표는 Input Authority를 가진 플레이어에게만 보여 준다.
+    /// 인게임 HUD가 핀을 표시하는 동안 기존 이름표는 숨긴다.
     /// </summary>
-    private void UpdateNameTagVisibility()
+    internal void SetNameTagSuppressed(bool suppressed)
     {
         if (_nameTag == null)
             return;
 
-        _nameTag.SetActive(Object.HasInputAuthority);
+        _nameTag.SetActive(!suppressed && Object != null && Object.IsValid && Object.HasInputAuthority);
     }
 
     public override void Despawned(NetworkRunner runner, bool hasState)

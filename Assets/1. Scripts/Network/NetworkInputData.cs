@@ -49,6 +49,9 @@ internal sealed class PlayerInputReader
 
     public NetworkInputData Read()
     {
+        if (GameMenus.BlocksPlayerInput)
+            return default;
+
         var move = _move.ReadValue<Vector2>();
         var data = new NetworkInputData { direction = new Vector3(move.x, 0f, move.y) };
         data.buttons.Set(PlayerInputButton.Jump, _jump.IsPressed());

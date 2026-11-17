@@ -1,47 +1,59 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
-/// <summary>
-/// 코스 진행도 막대. 남색 바탕 위 노란 진행선, 체크포인트는 마름모(한 번이라도 지난 것은 노랑, 남은 것은 회청색).
-/// 현재 위치는 흰 원. 값은 GameHud가 넣어 줌.
-/// </summary>
-public class ProgressBarGraphic : HudGraphic
+/// <summary>코스의 현재 위치와 통과한 체크포인트를 표시한다.</summary>
+public class ProgressBarGraphic : MonoBehaviour
 {
-    /// <summary>진행도(0~1). 뒤로 가면 줄어들지만 마지막으로 지난 체크포인트가 하한임(GameHud에서 정함).</summary>
     [HideInInspector] public float progress;
-
-    /// <summary>지금까지 가장 멀리 간 곳(0~1). 이보다 앞의 체크포인트는 지난 것으로 칠함.</summary>
     [HideInInspector] public float reached;
+    [HideInInspector] public float[] checkpoints = System.Array.Empty<float>();
 
-    /// <summary>체크포인트 위치(0~1). 마지막은 결승점.</summary>
-    [HideInInspector] public float[] checkpoints = new float[0];
+    private const float Padding = 25f;
+    private static readonly Vector2 Left = new Vector2(0f, .5f);
+    private static readonly Vector2 Center = new Vector2(.5f, .5f);
+    private readonly List<Image> markers = new();
+    private Image fill;
+    private RectTransform cursor;
 
-    protected override void Build(VertexHelper vh, Rect rect)
+    private void Awake()
     {
-        float h = rect.height;
-        float unit = h / 36f;
-        float pad = h * 0.55f;
-
-        HudMesh.RoundRect(vh, new Rect(rect.x, rect.y - 6f * unit, rect.width, h), h * 0.5f, new Color32(0, 0, 0, 70));
-        HudMesh.RoundRect(vh, rect, h * 0.5f, HudColors.Navy);
-
-        float x0 = rect.x + pad, x1 = rect.xMax - pad, y = rect.center.y;
-        float track = h * 0.34f;
-        HudMesh.RoundRect(vh, new Rect(x0, y - track * 0.5f, x1 - x0, track), track * 0.5f, HudColors.Track);
-        float fill = Mathf.Lerp(x0, x1, Mathf.Clamp01(progress));
-        if (fill - x0 > track) HudMesh.RoundRect(vh, new Rect(x0, y - track * 0.5f, fill - x0, track), track * 0.5f, HudColors.Yellow);
-
-        // 출발점 + 체크포인트들
-        DrawCheck(vh, x0, y, unit, true);
-        foreach (float f in checkpoints)
-            DrawCheck(vh, Mathf.Lerp(x0, x1, f), y, unit, f <= Mathf.Max(progress, reached) + 1e-4f);
-
-        HudMesh.OutlinedCircle(vh, new Vector2(fill, y), 7f * unit, 2.5f * unit, HudColors.White, HudColors.Navy, 20);
+        var sprites = GameUiSprites.Shared;
+        GameUi.Picture((RectTransform)transform, sprites.HudPill);
+        var track = GameUi.Child("Track", transform, Center, Center, Vector2.zero, new Vector2(-2 * Padding, 16));
+        track.anchorMin = Left;
+        track.anchorMax = new Vector2(1f, .5f);
+        GameUi.Picture(track, sprites.ProgressTrack);
+        fill = GameUi.Picture(GameUi.Child("Fill", transform, Left, Left, new Vector2(Padding, 0), new Vector2(0, 16)), sprites.HudFill);
+        fill.color = GameUi.Yellow;
+        cursor = GameUi.Child("Progress Dot", transform, Left, Center, new Vector2(Padding, 0), new Vector2(24, 24));
+        GameUi.Picture(cursor, sprites.ProgressDot);
     }
 
-    private static void DrawCheck(VertexHelper vh, float x, float y, float unit, bool passed)
+    public void Redraw()
     {
-        HudMesh.Diamond(vh, new Vector2(x, y), 11f * unit, 14f * unit, HudColors.Navy);
-        HudMesh.Diamond(vh, new Vector2(x, y), 8f * unit, 11f * unit, passed ? HudColors.Yellow : HudColors.Pending);
+        var sprites = GameUiSprites.Shared;
+        float trackWidth = ((RectTransform)transform).rect.width - 2 * Padding;
+        float traveled = trackWidth * Mathf.Clamp01(progress);
+        fill.enabled = traveled > 1f;
+        fill.rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, traveled);
+        cursor.anchoredPosition = new Vector2(Padding + traveled, 0);
+
+        while (markers.Count < checkpoints.Length + 1)
+        {
+            var marker = GameUi.Child("Checkpoint", transform, Left, Center, Vector2.zero, new Vector2(27, 34));
+            marker.SetSiblingIndex(cursor.GetSiblingIndex());
+            markers.Add(GameUi.Picture(marker, sprites.Checkpoint));
+        }
+        float furthest = Mathf.Max(progress, reached) + 1e-4f;
+        for (int i = 0; i < markers.Count; i++)
+        {
+            var marker = markers[i];
+            marker.enabled = i <= checkpoints.Length;
+            if (!marker.enabled) continue;
+            float fraction = i == 0 ? 0f : checkpoints[i - 1];
+            marker.rectTransform.anchoredPosition = new Vector2(Padding + fraction * trackWidth, 0);
+            marker.sprite = fraction <= furthest ? sprites.CheckpointPassed : sprites.Checkpoint;
+        }
     }
 }

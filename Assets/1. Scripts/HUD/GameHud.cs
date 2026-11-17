@@ -78,9 +78,12 @@ public class GameHud : MonoBehaviour
     private SpeedBarGraphic speedBar;
     private LevelGraphic level;
     private TextMeshProUGUI speedText;
+    private RectTransform speedFace;
     private ProgressBarGraphic progressBar;
     private CompassGraphic compass;
     private TextMeshProUGUI distanceText;
+    private Image playerPin;
+    private Player markedPlayer;
     private readonly List<(ChipGraphic chip, TextMeshProUGUI name, TextMeshProUGUI state)> chips = new();
     private readonly List<EdgeArrowGraphic> edgeArrows = new();
 
@@ -101,6 +104,8 @@ public class GameHud : MonoBehaviour
 
     private void Awake() => BuildCanvas();
 
+    private void OnDisable() => UpdatePlayerPin(null, null);
+
     private void LateUpdate()
     {
         if (Time.unscaledTime >= nextSearch) Search();
@@ -108,7 +113,11 @@ public class GameHud : MonoBehaviour
         var cam = viewCamera != null ? viewCamera : Camera.main;
         bool active = platform != null && wheel != null && cam != null;
         if (root.gameObject.activeSelf != active) root.gameObject.SetActive(active);
-        if (!active) return;
+        if (!active)
+        {
+            UpdatePlayerPin(null, null);
+            return;
+        }
 
         viewForward = cam.transform.forward;
         viewForward.y = 0f;
@@ -121,11 +130,12 @@ public class GameHud : MonoBehaviour
         SetActive(disc, useDisc);
         SetActive(travelDial, !useDisc);
         SetActive(speedBar, !useDisc);
-        SetActive(speedText, !useDisc);
+        if (speedFace.gameObject.activeSelf == useDisc) speedFace.gameObject.SetActive(!useDisc);
         SetActive(level, !useDisc && showTilt);
         if (useDisc) UpdateDisc(); else UpdateTravel();
         UpdateCourse(Time.deltaTime);
         UpdateTeam();
+        UpdatePlayerPin(cam, sortedPlayers.Count > 0 && sortedPlayers[0].Object.HasInputAuthority ? sortedPlayers[0] : null);
         UpdateEdgeArrows(cam);
     }
 
@@ -307,10 +317,37 @@ public class GameHud : MonoBehaviour
             chip.characterColor = HudColors.ForCharacter(p.name);
             chip.dim = !onDeck;
             chip.Redraw();
-            nameText.text = p.Object.HasInputAuthority ? "You" : HudColors.NameForCharacter(p.name);
+            nameText.text = p.Object.HasInputAuthority ? "나" : HudColors.NameForCharacter(p.name);
             nameText.color = onDeck ? Color.white : new Color(0.7f, 0.7f, 0.75f);
             stateText.text = onDeck ? "" : "OFF";
         }
+    }
+
+    private void UpdatePlayerPin(Camera cam, Player local)
+    {
+        if (playerPin == null) return;
+
+        var anchor = local != null ? local.NameTagAnchor : null;
+        if (anchor == null) local = null;
+        if (markedPlayer != local)
+        {
+            if (markedPlayer != null) markedPlayer.SetNameTagSuppressed(false);
+            markedPlayer = local;
+            if (markedPlayer != null) markedPlayer.SetNameTagSuppressed(true);
+        }
+
+        if (anchor != null && cam != null)
+        {
+            Vector3 screen = cam.WorldToScreenPoint(anchor.position);
+            if (screen.z > 0f && cam.pixelRect.Contains(screen) &&
+                RectTransformUtility.ScreenPointToLocalPointInRectangle(root, screen, null, out var point))
+            {
+                playerPin.rectTransform.anchoredPosition = point;
+                playerPin.enabled = true;
+                return;
+            }
+        }
+        playerPin.enabled = false;
     }
 
     // ---- 화면 밖 위험 ----
@@ -371,46 +408,43 @@ public class GameHud : MonoBehaviour
         Vector2 dialCenter = new Vector2(margin + 174f, margin + 189f);
         travelDial = Create<TravelDialGraphic>("Travel Dial", Vector2.zero, new Vector2(0.5f, 0.5f), dialCenter, new Vector2(200f, 200f));
         speedBar = Create<SpeedBarGraphic>("Speed Bar", Vector2.zero, new Vector2(0.5f, 0.5f), dialCenter + new Vector2(0f, -132f), new Vector2(210f, 22f));
-        speedText = CreateText("Speed", root, Vector2.zero, new Vector2(0.5f, 0.5f), dialCenter + new Vector2(0f, -170f), new Vector2(220f, 40f), 28f, TextAlignmentOptions.Center);
+        speedFace = GameUi.Child("Speed face", root, Vector2.zero, new Vector2(.5f, .5f),
+            dialCenter + new Vector2(0f, -170f), new Vector2(216f, 49f));
+        GameUi.Picture(speedFace, GameUiSprites.Shared.HudPill);
+        speedText = CreateText("Speed", speedFace, new Vector2(.5f, .5f), new Vector2(.5f, .5f), Vector2.zero,
+            new Vector2(205f, 41f), 28f, TextAlignmentOptions.Center);
         level = Create<LevelGraphic>("Tilt Level", Vector2.zero, new Vector2(0.5f, 0.5f), dialCenter + new Vector2(168f, 0f), new Vector2(130f, 130f));
         progressBar = Create<ProgressBarGraphic>("Course Progress", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -topMargin), new Vector2(700f, 46f));
         compass = Create<CompassGraphic>("Next Target", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -topMargin - 64f), new Vector2(86f, 86f));
         distanceText = CreateText("Next Distance", root, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -topMargin - 154f), new Vector2(240f, 40f), 30f, TextAlignmentOptions.Center);
+
+        var pinSprite = GameUiSprites.Shared.LocalPlayerPin;
+        if (pinSprite != null)
+        {
+            var pin = GameUi.Child("Local Player Pin", root, new Vector2(.5f, .5f), new Vector2(.5f, 0f),
+                Vector2.zero, new Vector2(58f, 38f));
+            playerPin = GameUi.Picture(pin, pinSprite);
+            playerPin.enabled = false;
+        }
     }
 
     private (ChipGraphic, TextMeshProUGUI, TextMeshProUGUI) CreateChip(int index)
     {
         var chip = Create<ChipGraphic>($"Team {index}", new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(margin, -margin - index * 58f), new Vector2(220f, 48f));
-        var name = CreateText("Name", chip.rectTransform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(58f, 0f), new Vector2(120f, 40f), 24f, TextAlignmentOptions.Left);
-        var state = CreateText("State", chip.rectTransform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-16f, 0f), new Vector2(60f, 40f), 22f, TextAlignmentOptions.Right);
+        var name = CreateText("Name", chip.transform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(58f, 0f), new Vector2(120f, 40f), 24f, TextAlignmentOptions.Left);
+        var state = CreateText("State", chip.transform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-16f, 0f), new Vector2(60f, 40f), 22f, TextAlignmentOptions.Right);
         state.color = new Color(1f, 0.8f, 0.2f);
         return (chip, name, state);
     }
 
-    private T Create<T>(string objectName, Vector2 anchor, Vector2 pivot, Vector2 position, Vector2 size) where T : Graphic
-    {
-        var go = new GameObject(objectName, typeof(RectTransform), typeof(CanvasRenderer));
-        go.transform.SetParent(root, false);
-        var rt = go.GetComponent<RectTransform>();
-        rt.anchorMin = rt.anchorMax = anchor;
-        rt.pivot = pivot;
-        rt.anchoredPosition = position;
-        rt.sizeDelta = size;
-        var graphic = go.AddComponent<T>();
-        graphic.raycastTarget = false;
-        return graphic;
-    }
+    private T Create<T>(string objectName, Vector2 anchor, Vector2 pivot, Vector2 position, Vector2 size) where T : Component
+        => GameUi.Child(objectName, root, anchor, pivot, position, size).gameObject.AddComponent<T>();
 
-    private static TextMeshProUGUI CreateText(string objectName, RectTransform parent, Vector2 anchor, Vector2 pivot, Vector2 position, Vector2 size, float fontSize, TextAlignmentOptions alignment)
+    private TextMeshProUGUI CreateText(string objectName, Transform parent, Vector2 anchor, Vector2 pivot, Vector2 position, Vector2 size, float fontSize, TextAlignmentOptions alignment)
     {
-        var go = new GameObject(objectName, typeof(RectTransform));
-        go.transform.SetParent(parent, false);
-        var rt = go.GetComponent<RectTransform>();
-        rt.anchorMin = rt.anchorMax = anchor;
-        rt.pivot = pivot;
-        rt.anchoredPosition = position;
-        rt.sizeDelta = size;
-        var text = go.AddComponent<TextMeshProUGUI>();
+        var rect = GameUi.Child(objectName, parent, anchor, pivot, position, size);
+        var text = rect.gameObject.AddComponent<TextMeshProUGUI>();
+        text.font = GameUiSprites.Shared.Typography;
         text.fontSize = fontSize;
         text.fontStyle = FontStyles.Bold;
         text.alignment = alignment;

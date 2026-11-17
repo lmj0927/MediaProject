@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 86 110" width="86" height="110">
+  <defs><clipPath id="header"><path d="M0 110V29A29 29 0 0 1 29 0H57A29 29 0 0 1 86 29V110Z"/></clipPath><linearGradient id="gradient1" x2="0" y2="1"><stop stop-color="#ffdb70"/><stop offset="1" stop-color="#ffd15a"/></linearGradient></defs>
+  <rect width="86" height="110" clip-path="url(#header)" fill="url(#gradient1)"/>
+  <path d="M0 108H86" stroke="#dfa842" stroke-width="3"/>
+</svg>

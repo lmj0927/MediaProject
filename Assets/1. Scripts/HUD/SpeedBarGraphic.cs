@@ -1,31 +1,30 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-/// <summary>
-/// 속도 막대(새 좌하단 HUD). 남색 둥근 바탕 위 막대가 속도 비율만큼 차오르고, 빠를수록 노랑 → 주황 → 빨강으로 바뀜.
-/// 값은 GameHud가 넣어 줌.
-/// </summary>
-public class SpeedBarGraphic : HudGraphic
+/// <summary>속도를 막대 길이와 색으로 표시한다.</summary>
+public class SpeedBarGraphic : MonoBehaviour
 {
-    /// <summary>속도 비율(0~1, 최고 속도 = 1).</summary>
     [HideInInspector] public float ratio;
 
-    protected override void Build(VertexHelper vh, Rect rect)
+    private Image fill;
+
+    private void Awake()
     {
-        float h = rect.height;
-        HudMesh.RoundRect(vh, rect, h * 0.5f, HudMesh.WithAlpha(HudColors.Navy, 0.9f));
-        float pad = h * 0.22f;
-        var inner = new Rect(rect.x + pad, rect.y + pad, rect.width - pad * 2f, h - pad * 2f);
-        float fill = inner.width * Mathf.Clamp01(ratio);
-        if (fill > inner.height * 0.5f)
-        {
-            HudMesh.RoundRect(vh, new Rect(inner.x, inner.y, fill, inner.height), inner.height * 0.5f, ColorFor(ratio));
-            float line = inner.height * 0.18f;
-            HudMesh.RoundRect(vh, new Rect(inner.x + inner.height * 0.3f, inner.yMax - line * 2.2f, Mathf.Max(0f, fill - inner.height * 0.6f), line), line * 0.5f, new Color32(255, 255, 255, 90));
-        }
+        var sprites = GameUiSprites.Shared;
+        GameUi.Picture((RectTransform)transform, sprites.HudTrack);
+        var left = new Vector2(0f, .5f);
+        var bar = GameUi.Child("Fill", transform, left, left, new Vector2(4, 0), new Vector2(0, 14));
+        fill = GameUi.Picture(bar, sprites.HudFill);
     }
 
-    /// <summary>속도 비율에 따른 막대 색. 노랑 → 주황(60%~) → 빨강(최고 속도 근처).</summary>
+    public void Redraw()
+    {
+        float width = (((RectTransform)transform).rect.width - 8f) * Mathf.Clamp01(ratio);
+        fill.enabled = width > 1f;
+        fill.rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, width);
+        fill.color = ColorFor(ratio);
+    }
+
     public static Color32 ColorFor(float t)
     {
         t = Mathf.Clamp01(t);

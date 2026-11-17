@@ -1,0 +1,54 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 908143b3bd041d747b295b5a536b132e, type: 3}
+  m_Name: Roll With Us UI
+  m_EditorClassIdentifier: Assembly-CSharp::GameUiSprites
+  Typography: {fileID: 11400000, guid: 05a6631b204a4054da6d3eb0c9ae993e, type: 2}
+  ButtonGold: {fileID: 21300000, guid: b034a9cdcc8b45a4f85332b92adb5a46, type: 3}
+  ButtonSky: {fileID: 21300000, guid: f6ed079c710e546488f005fe0b4ffd0e, type: 3}
+  ButtonCream: {fileID: 21300000, guid: c507af9645c475c47bc91410cbe6a724, type: 3}
+  ButtonCoral: {fileID: 21300000, guid: 2484fe9802e1482468e9e1f9b9f295ab, type: 3}
+  ButtonDisabled: {fileID: 21300000, guid: 4d07dad275239934eb51a26a4b8786a1, type: 3}
+  ButtonDanger: {fileID: 21300000, guid: 2782534ebb303d24d97bdbb43b7c5fd3, type: 3}
+  Card: {fileID: 21300000, guid: ff3964360781a714098b34097ab2183a, type: 3}
+  Header: {fileID: 21300000, guid: 43a6b404e0c01e34089a5205ee9e6525, type: 3}
+  Section: {fileID: 21300000, guid: 6b71fe2a1b4a547489dac9d8546b4473, type: 3}
+  ScrimBlack: {fileID: 21300000, guid: 4395431d58421ab4993c99a8b72a854a, type: 3}
+  ScrimBlue: {fileID: 21300000, guid: cce3a8bf9168c70458690b31469eaaa4, type: 3}
+  Gear: {fileID: 21300000, guid: b2d50e4abb3289043827fb2b17a3d407, type: 3}
+  Close: {fileID: 21300000, guid: 84539b362d95ae540b6950078443ce62, type: 3}
+  Caret: {fileID: 21300000, guid: 5ef4e81efd8a8e840bb7e0d598b1da07, type: 3}
+  SliderTrack: {fileID: 21300000, guid: a2c6aab8c105f024ca77af52c3c9028c, type: 3}
+  SliderFill: {fileID: 21300000, guid: 96f44bae09bcd5147b7aab3172baf13c, type: 3}
+  Knob: {fileID: 21300000, guid: cbecdfcbc8615664284e3161cc0f5b13, type: 3}
+  ToggleOff: {fileID: 21300000, guid: 6255550108e6f984e9d9fd779fc78876, type: 3}
+  ToggleOn: {fileID: 21300000, guid: f1af384095515b942b2e07fb4321f30b, type: 3}
+  FieldBlue: {fileID: 21300000, guid: 44671fd04663d9143828d062f31a3844, type: 3}
+  Dropdown: {fileID: 21300000, guid: 4785617b040e2d6489b84deadc2e530b, type: 3}
+  Option: {fileID: 21300000, guid: d79ee77fc1e5ebf4f954a48f37e395a4, type: 3}
+  SelectedDot: {fileID: 21300000, guid: 9f03108aa6cb32d4a851e14530710c0a, type: 3}
+  HudPill: {fileID: 21300000, guid: de091146a71dc4f4d87a0d2081d5da8b, type: 3}
+  LocalPlayerPin: {fileID: 21300000, guid: 0fff30a24808eed4f99f16e2c293f1f0, type: 3}
+  HudPillDim: {fileID: 21300000, guid: efa5f08bdd2c8794bae3207a6013edb8, type: 3}
+  TeamDot: {fileID: 21300000, guid: 8b925e78414521743a1df9489d5a61ef, type: 3}
+  TeamRing: {fileID: 21300000, guid: 1d7763967c9c3964dbab2d5e2044381a, type: 3}
+  HudTrack: {fileID: 21300000, guid: e93d4395ad4b4be46a3c28430f82b246, type: 3}
+  HudFill: {fileID: 21300000, guid: 33b40a8e1163136428285c16c249653d, type: 3}
+  ProgressTrack: {fileID: 21300000, guid: eccbc750ef18cf34c8aa22527ced4f06, type: 3}
+  Checkpoint: {fileID: 21300000, guid: 8384f47e6dcdb504c9b0f3a95dd5156c, type: 3}
+  CheckpointPassed: {fileID: 21300000, guid: 0725ab2bcab5a784380922759ad530de, type: 3}
+  ProgressDot: {fileID: 21300000, guid: 03d0427021a02c24eb825dd0806db4c7, type: 3}
+  TravelDial: {fileID: 21300000, guid: 012d56b88167e13469dbe7b3e6288153, type: 3}
+  TravelDot: {fileID: 21300000, guid: 50e0a827a09c480479e355233aa252ce, type: 3}
+  TravelArrow: {fileID: 21300000, guid: 859ebf9b5c17b5f4085e35feb33c928b, type: 3}
+  TiltDial: {fileID: 21300000, guid: b7410d294b65dfb43a8a7370eabaffac, type: 3}
+  TiltDot: {fileID: 21300000, guid: 4b3455114a9577247a69c2890abc4892, type: 3}

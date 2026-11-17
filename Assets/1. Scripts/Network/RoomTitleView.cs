@@ -1,4 +1,5 @@
 using System.Text;
+using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -7,17 +8,19 @@ public sealed class RoomTitleView : MonoBehaviour
     [SerializeField] private GameObject _form;
     [SerializeField] private GameObject _capacityRow;
     [SerializeField] private GameObject _codeRow;
-    [SerializeField] private UnityEngine.UI.InputField _nickname;
-    [SerializeField] private UnityEngine.UI.InputField _code;
-    [SerializeField] private UnityEngine.UI.Text _formTitle;
-    [SerializeField] private UnityEngine.UI.Text _capacityText;
-    [SerializeField] private UnityEngine.UI.Text _status;
-    [SerializeField] private UnityEngine.UI.Text _titleStatus;
-    [SerializeField] private UnityEngine.UI.Text _submitText;
+    [SerializeField] private TMP_InputField _nickname;
+    [SerializeField] private TMP_InputField _code;
+    [SerializeField] private TMP_Text _formTitle;
+    [SerializeField] private TMP_Text _capacityText;
+    [SerializeField] private TMP_Text _status;
+    [SerializeField] private TMP_Text _titleStatus;
+    [SerializeField] private TMP_Text _submitText;
     [SerializeField] private UnityEngine.UI.Button _submit;
     [SerializeField] private UnityEngine.UI.Button _cancel;
     [SerializeField] private UnityEngine.UI.Button _less;
     [SerializeField] private UnityEngine.UI.Button _more;
+    [SerializeField] private UnityEngine.UI.Button _close;
+    [SerializeField] private CanvasGroup _mainMenu;
     [SerializeField, HideInInspector] private string _buildLobbyPath;
     [SerializeField, HideInInspector] private string _buildGamePath;
 
@@ -45,13 +48,28 @@ public sealed class RoomTitleView : MonoBehaviour
         _submitText.text = create ? "방 만들기" : "참여하기";
         _capacityRow.SetActive(create);
         _codeRow.SetActive(!create);
+        SetMenuAvailable(false);
         _form.SetActive(true);
         UpdateCapacity();
         _nickname.Select();
         _nickname.ActivateInputField();
     }
 
-    public void HideForm() => _form.SetActive(false);
+    public void HideForm()
+    {
+        if (_connecting)
+            return;
+        _form.SetActive(false);
+        SetMenuAvailable(true);
+    }
+
+    private void SetMenuAvailable(bool available)
+    {
+        if (_mainMenu == null)
+            return;
+        _mainMenu.interactable = available;
+        _mainMenu.blocksRaycasts = available;
+    }
     public void AddCapacity() => SetCapacity(_capacity + 1);
     public void RemoveCapacity() => SetCapacity(_capacity - 1);
 
@@ -119,6 +137,7 @@ public sealed class RoomTitleView : MonoBehaviour
         _connecting = connecting;
         _submit.interactable = !connecting;
         _cancel.interactable = !connecting;
+        if (_close != null) _close.interactable = !connecting;
         _nickname.interactable = !connecting;
         _code.interactable = !connecting;
         UpdateCapacity();
