@@ -195,7 +195,7 @@ public class Player : NetworkBehaviour, IHoldable, ILaunchable
 
     /// <summary>
     /// 로컬 이름표는 Input Authority를 가진 플레이어에게만 보여 준다.
-    /// 인게임 HUD가 핀을 표시하는 동안 기존 이름표는 숨긴다.
+    /// 로비와 인게임에서 핀을 표시하는 동안 기존 이름표는 숨긴다.
     /// </summary>
     internal void SetNameTagSuppressed(bool suppressed)
     {

@@ -82,8 +82,7 @@ public class GameHud : MonoBehaviour
     private ProgressBarGraphic progressBar;
     private CompassGraphic compass;
     private TextMeshProUGUI distanceText;
-    private Image playerPin;
-    private Player markedPlayer;
+    private LocalPlayerPin playerPin;
     private readonly List<(ChipGraphic chip, TextMeshProUGUI name, TextMeshProUGUI state)> chips = new();
     private readonly List<EdgeArrowGraphic> edgeArrows = new();
 
@@ -104,7 +103,7 @@ public class GameHud : MonoBehaviour
 
     private void Awake() => BuildCanvas();
 
-    private void OnDisable() => UpdatePlayerPin(null, null);
+    private void OnDisable() => playerPin?.Update(null, null);
 
     private void LateUpdate()
     {
@@ -115,7 +114,7 @@ public class GameHud : MonoBehaviour
         if (root.gameObject.activeSelf != active) root.gameObject.SetActive(active);
         if (!active)
         {
-            UpdatePlayerPin(null, null);
+            playerPin.Update(null, null);
             return;
         }
 
@@ -135,7 +134,7 @@ public class GameHud : MonoBehaviour
         if (useDisc) UpdateDisc(); else UpdateTravel();
         UpdateCourse(Time.deltaTime);
         UpdateTeam();
-        UpdatePlayerPin(cam, sortedPlayers.Count > 0 && sortedPlayers[0].Object.HasInputAuthority ? sortedPlayers[0] : null);
+        playerPin.Update(cam, sortedPlayers.Count > 0 && sortedPlayers[0].Object.HasInputAuthority ? sortedPlayers[0] : null);
         UpdateEdgeArrows(cam);
     }
 
@@ -323,33 +322,6 @@ public class GameHud : MonoBehaviour
         }
     }
 
-    private void UpdatePlayerPin(Camera cam, Player local)
-    {
-        if (playerPin == null) return;
-
-        var anchor = local != null ? local.NameTagAnchor : null;
-        if (anchor == null) local = null;
-        if (markedPlayer != local)
-        {
-            if (markedPlayer != null) markedPlayer.SetNameTagSuppressed(false);
-            markedPlayer = local;
-            if (markedPlayer != null) markedPlayer.SetNameTagSuppressed(true);
-        }
-
-        if (anchor != null && cam != null)
-        {
-            Vector3 screen = cam.WorldToScreenPoint(anchor.position);
-            if (screen.z > 0f && cam.pixelRect.Contains(screen) &&
-                RectTransformUtility.ScreenPointToLocalPointInRectangle(root, screen, null, out var point))
-            {
-                playerPin.rectTransform.anchoredPosition = point;
-                playerPin.enabled = true;
-                return;
-            }
-        }
-        playerPin.enabled = false;
-    }
-
     // ---- 화면 밖 위험 ----
 
     private readonly List<(Vector3 position, BalanceDiscGraphic.MarkerKind kind)> threats = new();
@@ -418,14 +390,7 @@ public class GameHud : MonoBehaviour
         compass = Create<CompassGraphic>("Next Target", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -topMargin - 64f), new Vector2(86f, 86f));
         distanceText = CreateText("Next Distance", root, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -topMargin - 154f), new Vector2(240f, 40f), 30f, TextAlignmentOptions.Center);
 
-        var pinSprite = GameUiSprites.Shared.LocalPlayerPin;
-        if (pinSprite != null)
-        {
-            var pin = GameUi.Child("Local Player Pin", root, new Vector2(.5f, .5f), new Vector2(.5f, 0f),
-                Vector2.zero, new Vector2(58f, 38f));
-            playerPin = GameUi.Picture(pin, pinSprite);
-            playerPin.enabled = false;
-        }
+        playerPin = new LocalPlayerPin(root);
     }
 
     private (ChipGraphic, TextMeshProUGUI, TextMeshProUGUI) CreateChip(int index)

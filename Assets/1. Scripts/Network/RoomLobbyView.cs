@@ -19,6 +19,16 @@ public sealed class RoomLobbyView : MonoBehaviour
 
     private readonly RoomSeat[] _byCharacter = new RoomSeat[RoomLobby.CharacterCount];
     private float _copiedUntil;
+    private LocalPlayerPin _playerPin;
+    private Player _practicePlayer;
+
+    private void Awake() => _playerPin = new LocalPlayerPin((RectTransform)transform);
+
+    private void OnDisable()
+    {
+        _playerPin?.Update(null, null);
+        _practicePlayer = null;
+    }
 
     private void Update()
     {
@@ -75,6 +85,35 @@ public sealed class RoomLobbyView : MonoBehaviour
         _hint.text = starting ? "게임을 불러오는 중..." : local.Character == RoomLobby.Unselected
             ? "캐릭터를 선택해 주세요."
             : ready == joined ? "전원 준비 완료" : "";
+    }
+
+    private void LateUpdate()
+    {
+        if (!_lobby.IsAvailable || RoomSession.Active == null)
+        {
+            _playerPin.Update(null, null);
+            _practicePlayer = null;
+            return;
+        }
+
+        var runner = _lobby.Runner;
+        if (_practicePlayer == null || _practicePlayer.Object == null ||
+            !_practicePlayer.Object.IsValid || !_practicePlayer.Object.HasInputAuthority)
+        {
+            _practicePlayer = null;
+            if (_lobby.GetSeat(runner.LocalPlayer).Character != RoomLobby.Unselected)
+            {
+                foreach (var player in runner.GetAllBehaviours<Player>())
+                {
+                    if (player.Object != null && player.Object.IsValid && player.Object.HasInputAuthority)
+                    {
+                        _practicePlayer = player;
+                        break;
+                    }
+                }
+            }
+        }
+        _playerPin.Update(Camera.main, _practicePlayer);
     }
 
     public void SelectCharacter(int character)
