@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 7745029338221493524}
   - component: {fileID: 4375566909501316686}
   - component: {fileID: 6264779644122276659}
+  - component: {fileID: 5969524374855434984}
   m_Layer: 0
   m_Name: Factory Piston Pad
   m_TagString: Untagged
@@ -96,11 +97,27 @@ MonoBehaviour:
   visual:
     model: {fileID: 3311518639657708502}
     clip: {fileID: 7400000, guid: 0a8a75d1267795a40a516ba3f51a266f, type: 2}
-  jumpHeight: 4
-  horizontalSpeed: 12
-  momentumKeep: 0
-  matchSpin: 1
+  jumpForce: 4
   rearmFraction: 0.148
+--- !u!114 &5969524374855434984
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2280284934386946917}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2e0a7a9462986b040a2c73834edda3b3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PistonCycle
+  period: 0
+  activeTime: 0.9
+  phaseOffset: 0
+  warnTime: 0.5
+  plate: {fileID: 2792003091175682412}
+  plateRise: 1.6
+  plateDip: 0.35
 --- !u!1001 &6204866081479785141
 PrefabInstance:
   m_ObjectHideFlags: 0

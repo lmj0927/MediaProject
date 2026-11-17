@@ -18848,6 +18848,14 @@ PrefabInstance:
       propertyPath: m_Name
       value: Factory Piston Pad
       objectReference: {fileID: 0}
+    - target: {fileID: 5969524374855434984, guid: b4527203a380d5040aebe0d16c6589dd, type: 3}
+      propertyPath: period
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 6264779644122276659, guid: b4527203a380d5040aebe0d16c6589dd, type: 3}
+      propertyPath: jumpForce
+      value: 12
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects:
@@ -22654,6 +22662,18 @@ PrefabInstance:
     - target: {fileID: 2280284934386946917, guid: b4527203a380d5040aebe0d16c6589dd, type: 3}
       propertyPath: m_Name
       value: Factory Piston Pad
+      objectReference: {fileID: 0}
+    - target: {fileID: 5969524374855434984, guid: b4527203a380d5040aebe0d16c6589dd, type: 3}
+      propertyPath: period
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 5969524374855434984, guid: b4527203a380d5040aebe0d16c6589dd, type: 3}
+      propertyPath: phaseOffset
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 6264779644122276659, guid: b4527203a380d5040aebe0d16c6589dd, type: 3}
+      propertyPath: jumpForce
+      value: 12
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
