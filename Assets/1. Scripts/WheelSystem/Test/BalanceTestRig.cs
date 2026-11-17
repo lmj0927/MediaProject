@@ -128,6 +128,33 @@ public class BalanceTestRig : NetworkBehaviour, IAfterTick
     [Tooltip("트롤이 반대편에 섰을 때 내려찍기를 반복함.")]
     [SerializeField] private bool trollStamps = true;
 
+    [Header("Human Team")]
+    [Tooltip("Perfect: 팀이 필요한 무게중심을 함께 계산해 정확히 그 자리에 섬.\n" +
+             "Human: 더미마다 자기 반응 지연만큼 늦게 보고, 부족한 만큼 지금 자리에서 조금씩 더 움직임. 여럿이 같은 신호에 같이 움직여 몰림이 생김.")]
+    [SerializeField] private TeamModel teamModel = TeamModel.Perfect;
+
+    [Tooltip("Human: 판을 시작할 때 더미마다 이 범위에서 뽑아 고정하는 반응 지연(초). 늘 늦는 사람이 생김.")]
+    [SerializeField] private Vector2 personalReaction = new Vector2(0.25f, 0.8f);
+
+    [Tooltip("Human: 반응할 때마다 더하는 흔들림(초).")]
+    [Min(0f)][SerializeField] private float reactionJitter = 0.08f;
+
+    [Tooltip("Human: 지시하는 더미(0번)의 판단이 나머지에게 말로 전해지기까지 걸리는 시간 범위(초). 더미마다 고정.")]
+    [SerializeField] private Vector2 voiceDelay = new Vector2(0.3f, 0.8f);
+
+    [Tooltip("Human: 4명일 때 몰림 배율. 1이면 넷이 합쳐 필요한 만큼만 움직이고, 2면 필요한 양의 두 배만큼 움직임.\n" +
+             "인원이 적을수록 1에 가까워지고 혼자일 때는 1.")]
+    [Min(1f)][SerializeField] private float crowdingAtFour = 2f;
+
+    [Tooltip("Human: 한 번 반응할 때 부족한 양 중 실제로 옮기는 비율. 사람은 한 번에 다 고치지 않고 나눠서 움직임.")]
+    [Range(0.1f, 1f)][SerializeField] private float stepFraction = 0.6f;
+
+    [Tooltip("Human: 줄 선 자리로 돌아가려는 정도. 너무 흩어지거나 한 점에 모이는 것을 막음.")]
+    [Range(0f, 1f)][SerializeField] private float formationPull = 0.2f;
+
+    [Tooltip("Human: 다른 더미와 이 거리(m)보다 가까우면 비켜 섬.")]
+    [Min(0f)][SerializeField] private float personalSpace = 1.2f;
+
     [Header("Hammer Gate")]
     [Tooltip("해머 회전축 앞 이 거리(m)에서 멈춰 타이밍을 봄. 사람이 해머를 보고 기다렸다 지나가는 것을 흉내 냄.")]
     [Min(5f)][SerializeField] private float gateHoldDistance = 35f;
@@ -235,6 +262,8 @@ public class BalanceTestRig : NetworkBehaviour, IAfterTick
              "이동 중에 찍으면 점프하는 동안 멈춰 서서, 가운데를 지나다 제자리 점프만 반복하게 됨.")]
     [Min(0.1f)][SerializeField] private float autoStampArriveDistance = 1f;
 
+    public enum TeamModel { Perfect, Human }
+
     private class Dummy
     {
         public NetworkObject obj;
@@ -247,6 +276,10 @@ public class BalanceTestRig : NetworkBehaviour, IAfterTick
         public bool moving;
         public bool jumpRequested;
         public float nextDecision;
+
+        // Human 팀: 판마다 정하는 개인 반응 지연과 말 전달 지연(초)
+        public float reaction;
+        public float voice;
 
         // 내려찍기: 0 없음, 1 점프 대기, 2 상승 중, 3 공중 정지, 4 내리꽂는 중
         public int stampPhase;
@@ -290,6 +323,9 @@ public class BalanceTestRig : NetworkBehaviour, IAfterTick
     private CourseRoute pathRoute;
     private float pathAlong, pathEnd;
     private readonly List<(float along, float lat, float clearance)> pathAvoid = new();
+
+    // Human 팀: 틱마다 팀이 원하는 무게중심과 실제 무게중심(판 중심 기준). 더미마다 자기 지연만큼 늦은 값을 봄
+    private readonly List<(float time, Vector3 desired, Vector3 actual)> leanHistory = new();
 
     // 트롤. 팀은 트롤의 존재를 모르고 평소처럼 판단하며, 결과로 생긴 속도 오차를 더 몰려서 메움.
     private enum TrollTactic { Counter, Sideways, Center }
@@ -407,6 +443,12 @@ public class BalanceTestRig : NetworkBehaviour, IAfterTick
 
     /// <summary>전략 주행의 순항 속도(m/s).</summary>
     public float CruiseSpeed { get => cruiseSpeed; set => cruiseSpeed = Mathf.Max(1f, value); }
+
+    /// <summary>더미 팀이 움직이는 방식.</summary>
+    public TeamModel Model { get => teamModel; set => teamModel = value; }
+
+    /// <summary>Human 팀에서 4명일 때 몰림 배율.</summary>
+    public float CrowdingAtFour { get => crowdingAtFour; set => crowdingAtFour = Mathf.Max(1f, value); }
 
     /// <summary>트롤이 내려찍기를 쓰는지.</summary>
     public bool TrollStamps { get => trollStamps; set => trollStamps = value; }
@@ -878,6 +920,7 @@ public class BalanceTestRig : NetworkBehaviour, IAfterTick
         float now = (float)Runner.SimulationTime;
         for (int i = 0; i < dummies.Count; i++)
             dummies[i].nextDecision = now + Random.Range(reactionTime.x, reactionTime.y);
+        if (teamModel == TeamModel.Human) AssignPersonalTraits(now);
 
         trollIndex = withTroll && dummies.Count > 1 ? Random.Range(0, dummies.Count) : -1;
         if (trollIndex >= 0)
@@ -1048,6 +1091,7 @@ public class BalanceTestRig : NetworkBehaviour, IAfterTick
         Vector3 lean = desired / fullLeanSpeed * feedForward + error / fullLeanError;
         plannedLean = Vector3.ClampMagnitude(lean, 1f) * (DeckRadius * 0.8f);
         plannedDirection = distance > 0.01f ? toGoal / distance : Vector3.forward;
+        if (teamModel == TeamModel.Human) RecordLean(now);
 
         if (teamStamps) UpdateTeamStamp(now, error);
 
@@ -1070,6 +1114,11 @@ public class BalanceTestRig : NetworkBehaviour, IAfterTick
                 d.nextDecision = now + Random.Range(trollReactionTime.x, trollReactionTime.y);
                 spot = AvoidBombs(TrollSpot());
                 d.autoStamp = trollStamps && trollTactic == TrollTactic.Counter;
+            }
+            else if (teamModel == TeamModel.Human)
+            {
+                d.nextDecision = now + Mathf.Max(0.05f, d.reaction + Random.Range(-reactionJitter, reactionJitter));
+                spot = AvoidBombs(HumanSpot(i, mySlot, teamCount, now));
             }
             else
             {
@@ -2147,6 +2196,83 @@ public class BalanceTestRig : NetworkBehaviour, IAfterTick
             Vector2 spot = spots[i % spots.Length];
             MoveDummy(i, spot.x, spot.y);
         }
+    }
+
+    // ---- Human 팀 ----
+
+    /// <summary>더미마다 이번 판의 반응 지연과 말 전달 지연을 뽑음. 0번은 지시하는 사람이라 말 전달 지연이 없음.</summary>
+    private void AssignPersonalTraits(float now)
+    {
+        leanHistory.Clear();
+        var sb = new StringBuilder("Human 팀: 몰림 배율(4명) " + crowdingAtFour.ToString("F1") + ", 반응/말 지연");
+        for (int i = 0; i < dummies.Count; i++)
+        {
+            var d = dummies[i];
+            d.reaction = Random.Range(personalReaction.x, personalReaction.y);
+            d.voice = i == 0 ? 0f : Random.Range(voiceDelay.x, voiceDelay.y);
+            d.nextDecision = now + d.reaction;
+            sb.Append($" [{i}] {d.reaction:F2}/{d.voice:F2}");
+        }
+        strategyReport.AppendLine(sb.ToString());
+    }
+
+    /// <summary>팀이 원하는 무게중심(plannedLean)과 더미들의 실제 평균 위치를 기록함. 3초 넘은 기록은 버림.</summary>
+    private void RecordLean(float now)
+    {
+        Vector3 sum = Vector3.zero;
+        int n = 0;
+        foreach (var d in dummies)
+        {
+            if (!d.IsValid) continue;
+            Vector3 offset = d.obj.transform.position - platformBody.position;
+            sum += new Vector3(offset.x, 0f, offset.z);
+            n++;
+        }
+        leanHistory.Add((now, plannedLean, n > 0 ? sum / n : Vector3.zero));
+        while (leanHistory.Count > 2 && now - leanHistory[0].time > 3f) leanHistory.RemoveAt(0);
+    }
+
+    /// <summary>time 시점(또는 그 직전)의 기록. 기록이 없으면 지금 값.</summary>
+    private (Vector3 desired, Vector3 actual) LeanAt(float time)
+    {
+        for (int i = leanHistory.Count - 1; i >= 0; i--)
+            if (leanHistory[i].time <= time) return (leanHistory[i].desired, leanHistory[i].actual);
+        return leanHistory.Count > 0 ? (leanHistory[0].desired, leanHistory[0].actual) : (plannedLean, Vector3.zero);
+    }
+
+    /// <summary>
+    /// Human 팀에서 i번째 더미가 설 자리.
+    /// 자기 반응 지연만큼 늦게 본 실제 무게중심과, 반응 지연 + 말 전달 지연만큼 늦게 전해진 목표 무게중심의 차이를 보고
+    /// 지금 가려던 자리에서 그 차이만큼(몰림 배율, 한 번에 옮기는 비율 적용) 더 움직임.
+    /// 줄 선 자리로 약하게 돌아가고, 다른 더미와 너무 가까우면 비켜 섬. 위치 오차를 더함.
+    /// </summary>
+    private Vector2 HumanSpot(int index, int slot, int count, float now)
+    {
+        var d = dummies[index];
+        Vector3 desired = LeanAt(now - d.reaction - d.voice).desired;
+        Vector3 actual = LeanAt(now - d.reaction).actual;
+        float crowding = 1f + (crowdingAtFour - 1f) * Mathf.Clamp01((count - 1) / 3f);
+        // 아직 걸어가는 중인 거리는 이미 움직인 것으로 침. 안 그러면 도착하기도 전에 계속 더 가려고 해서 끝없이 쏠림
+        Vector3 own = d.obj.transform.position - platformBody.position;
+        Vector3 pending = new Vector3(d.target.x - own.x, 0f, d.target.y - own.z);
+        Vector3 step = (desired - actual - pending) * (stepFraction * crowding);
+        Vector2 spot = d.target + new Vector2(step.x, step.z);
+
+        Vector3 dir = desired.sqrMagnitude > 0.01f ? desired.normalized : Vector3.forward;
+        Vector3 side = new Vector3(-dir.z, 0f, dir.x) * ((slot - (count - 1) * 0.5f) * spacing);
+        spot = Vector2.Lerp(spot, new Vector2(desired.x + side.x, desired.z + side.z), formationPull);
+
+        for (int j = 0; j < dummies.Count; j++)
+        {
+            if (j == index || !dummies[j].IsValid) continue;
+            Vector3 o = dummies[j].obj.transform.position - platformBody.position;
+            Vector2 away = spot - new Vector2(o.x, o.z);
+            float dist = away.magnitude;
+            if (dist < personalSpace) spot += (dist > 1e-3f ? away / dist : Random.insideUnitCircle.normalized) * (personalSpace - dist);
+        }
+
+        spot += Random.insideUnitCircle * aimError;
+        return Vector2.ClampMagnitude(spot, DeckRadius * 0.85f);
     }
 
     /// <summary>
