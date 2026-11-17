@@ -17,6 +17,8 @@ public class WheelDebugView : MonoBehaviour
     [SerializeField] private float markerSize = 0.25f;
 
     [Header("HUD")]
+    [SerializeField] private bool showRuntimeHud = true;
+
     [Tooltip("HUD 글자 크기. 해상도가 높으면 키울 것.")]
     [Range(10, 32)][SerializeField] private int hudFontSize = 14;
 
@@ -107,7 +109,7 @@ public class WheelDebugView : MonoBehaviour
 
     private void OnGUI()
     {
-        if (!Application.isPlaying || solver == null || platform == null) return;
+        if (!showRuntimeHud || !Application.isPlaying || solver == null || platform == null) return;
 
         BuildHudStyle();
         BuildHudLines();

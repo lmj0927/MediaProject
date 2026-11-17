@@ -1,0 +1,542 @@
+{
+  "MainButtonGold": {
+    "width": 136,
+    "height": 96,
+    "border": [
+      29,
+      35,
+      29,
+      29
+    ]
+  },
+  "ButtonGold": {
+    "width": 112,
+    "height": 84,
+    "border": [
+      23,
+      29,
+      23,
+      23
+    ]
+  },
+  "MainButtonSky": {
+    "width": 136,
+    "height": 96,
+    "border": [
+      29,
+      35,
+      29,
+      29
+    ]
+  },
+  "ButtonSky": {
+    "width": 112,
+    "height": 84,
+    "border": [
+      23,
+      29,
+      23,
+      23
+    ]
+  },
+  "MainButtonCream": {
+    "width": 136,
+    "height": 96,
+    "border": [
+      29,
+      35,
+      29,
+      29
+    ]
+  },
+  "ButtonCream": {
+    "width": 112,
+    "height": 84,
+    "border": [
+      23,
+      29,
+      23,
+      23
+    ]
+  },
+  "ButtonCoral": {
+    "width": 112,
+    "height": 84,
+    "border": [
+      23,
+      29,
+      23,
+      23
+    ]
+  },
+  "ButtonDisabled": {
+    "width": 112,
+    "height": 84,
+    "border": [
+      23,
+      28,
+      23,
+      23
+    ]
+  },
+  "ButtonDanger": {
+    "width": 106,
+    "height": 74,
+    "border": [
+      22,
+      22,
+      22,
+      22
+    ]
+  },
+  "Card": {
+    "width": 105,
+    "height": 110,
+    "border": [
+      35,
+      41,
+      35,
+      35
+    ]
+  },
+  "SmallCard": {
+    "width": 92,
+    "height": 94,
+    "border": [
+      25,
+      29,
+      25,
+      25
+    ]
+  },
+  "Section": {
+    "width": 82,
+    "height": 82,
+    "border": [
+      24,
+      24,
+      24,
+      24
+    ]
+  },
+  "KeyStrip": {
+    "width": 88,
+    "height": 66,
+    "border": [
+      25,
+      25,
+      25,
+      25
+    ]
+  },
+  "Footer": {
+    "width": 100,
+    "height": 84,
+    "border": [
+      27,
+      27,
+      27,
+      27
+    ]
+  },
+  "FieldCream": {
+    "width": 70,
+    "height": 66,
+    "border": [
+      18,
+      18,
+      18,
+      18
+    ]
+  },
+  "FieldSky": {
+    "width": 70,
+    "height": 66,
+    "border": [
+      18,
+      18,
+      18,
+      18
+    ]
+  },
+  "FieldBlue": {
+    "width": 72,
+    "height": 64,
+    "border": [
+      18,
+      18,
+      18,
+      18
+    ]
+  },
+  "Keycap": {
+    "width": 56,
+    "height": 47,
+    "border": [
+      17,
+      17,
+      17,
+      17
+    ]
+  },
+  "Option": {
+    "width": 44,
+    "height": 40,
+    "border": [
+      9,
+      9,
+      9,
+      9
+    ]
+  },
+  "Dropdown": {
+    "width": 52,
+    "height": 52,
+    "border": [
+      15,
+      15,
+      15,
+      15
+    ]
+  },
+  "SliderTrack": {
+    "width": 40,
+    "height": 28,
+    "border": [
+      15,
+      14,
+      15,
+      13
+    ]
+  },
+  "SliderFill": {
+    "width": 28,
+    "height": 20,
+    "border": [
+      11,
+      10,
+      11,
+      9
+    ]
+  },
+  "ToggleOff": {
+    "width": 70,
+    "height": 54,
+    "border": [
+      28,
+      27,
+      28,
+      26
+    ]
+  },
+  "ToggleOn": {
+    "width": 70,
+    "height": 54,
+    "border": [
+      28,
+      27,
+      28,
+      26
+    ]
+  },
+  "HudPill": {
+    "width": 74,
+    "height": 49,
+    "border": [
+      25,
+      24,
+      25,
+      24
+    ]
+  },
+  "HudPillDim": {
+    "width": 74,
+    "height": 49,
+    "border": [
+      25,
+      24,
+      25,
+      24
+    ]
+  },
+  "HudTrack": {
+    "width": 42,
+    "height": 22,
+    "border": [
+      12,
+      11,
+      12,
+      10
+    ]
+  },
+  "HudFill": {
+    "width": 34,
+    "height": 16,
+    "border": [
+      9,
+      8,
+      9,
+      7
+    ]
+  },
+  "ProgressTrack": {
+    "width": 32,
+    "height": 16,
+    "border": [
+      9,
+      8,
+      9,
+      7
+    ]
+  },
+  "Header": {
+    "width": 86,
+    "height": 110,
+    "border": [
+      31,
+      4,
+      31,
+      31
+    ]
+  },
+  "Knob": {
+    "width": 46,
+    "height": 46,
+    "border": [
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "SelectedDot": {
+    "width": 14,
+    "height": 14,
+    "border": [
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "TeamRing": {
+    "width": 36,
+    "height": 36,
+    "border": [
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "TeamDot": {
+    "width": 32,
+    "height": 32,
+    "border": [
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "TravelDial": {
+    "width": 200,
+    "height": 200,
+    "border": [
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "TiltDial": {
+    "width": 130,
+    "height": 130,
+    "border": [
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "TravelDot": {
+    "width": 27,
+    "height": 27,
+    "border": [
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "TiltDot": {
+    "width": 29,
+    "height": 29,
+    "border": [
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "ProgressDot": {
+    "width": 25,
+    "height": 25,
+    "border": [
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "Checkpoint": {
+    "width": 27,
+    "height": 34,
+    "border": [
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "CheckpointPassed": {
+    "width": 27,
+    "height": 34,
+    "border": [
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "Chevron": {
+    "width": 22,
+    "height": 36,
+    "border": [
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "Close": {
+    "width": 32,
+    "height": 32,
+    "border": [
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "Plus": {
+    "width": 36,
+    "height": 36,
+    "border": [
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "Minus": {
+    "width": 36,
+    "height": 8,
+    "border": [
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "Caret": {
+    "width": 34,
+    "height": 22,
+    "border": [
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "Gear": {
+    "width": 48,
+    "height": 48,
+    "border": [
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "SelectionRing": {
+    "width": 64,
+    "height": 64,
+    "border": [
+      16,
+      16,
+      16,
+      16
+    ]
+  },
+  "TravelArrow": {
+    "width": 134,
+    "height": 62,
+    "border": [
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "Clear": {
+    "width": 2,
+    "height": 2,
+    "border": [
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "ScrimBlack": {
+    "width": 2,
+    "height": 2,
+    "border": [
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "ScrimBlue": {
+    "width": 2,
+    "height": 2,
+    "border": [
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "FloorFade": {
+    "width": 3,
+    "height": 108,
+    "border": [
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "LocalPlayerPin": {
+    "width": 58,
+    "height": 38,
+    "border": [
+      0,
+      0,
+      0,
+      0
+    ]
+  }
+}
