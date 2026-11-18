@@ -96,7 +96,7 @@ MonoBehaviour:
   contactTolerance: 0.3
   visual:
     model: {fileID: 3311518639657708502}
-    clip: {fileID: 0}
+    clip: {fileID: 7400000, guid: 0a8a75d1267795a40a516ba3f51a266f, type: 2}
   jumpForce: 4
   rearmFraction: 0.148
 --- !u!114 &4335607886921110474
@@ -113,12 +113,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SpringPadVisual
   plate: {fileID: 2792003091175682412}
   column: {fileID: 8026273325364727222}
-  flipAngle: 50
-  flipTime: 0.12
-  holdTime: 0.35
-  returnTime: 0.8
+  columnLength: 4.44
+  columnHalfWidth: 0.93
+  columnRestY: -4.1
+  columnGap: 0.6
+  flipAngle: 18
+  riseHeight: 1.2
+  flipTime: 0.08
+  returnTime: 0.9
   hingeOffset: 4.4
-  plateThickness: 1.5
   triggerRange: 8
 --- !u!1 &7574592167775940041
 GameObject:

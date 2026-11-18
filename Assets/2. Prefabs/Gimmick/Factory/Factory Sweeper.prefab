@@ -74,8 +74,8 @@ MonoBehaviour:
   height: 6.4
   twoSided: 1
   restitution: 0.6
-  minPush: 22
-  lift: 5
+  minPush: 17
+  lift: 4
   matchSpin: 1
   detectionMask:
     serializedVersion: 2
