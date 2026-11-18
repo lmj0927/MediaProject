@@ -12,7 +12,7 @@ GameObject:
   - component: {fileID: 7745029338221493524}
   - component: {fileID: 4375566909501316686}
   - component: {fileID: 6264779644122276659}
-  - component: {fileID: 4335607886921110474}
+  - component: {fileID: 6651216323785174342}
   m_Layer: 0
   m_Name: Factory Piston Pad
   m_TagString: Untagged
@@ -99,7 +99,7 @@ MonoBehaviour:
     clip: {fileID: 7400000, guid: 0a8a75d1267795a40a516ba3f51a266f, type: 2}
   jumpForce: 4
   rearmFraction: 0.148
---- !u!114 &4335607886921110474
+--- !u!114 &6651216323785174342
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -112,11 +112,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpringPadVisual
   plate: {fileID: 2792003091175682412}
-  column: {fileID: 8026273325364727222}
-  columnLength: 4.44
-  columnHalfWidth: 0.93
-  columnRestY: -4.1
-  columnGap: 0.6
   flipAngle: 18
   riseHeight: 1.2
   flipTime: 0.08
@@ -324,10 +319,5 @@ Transform:
 --- !u!1 &3311518639657708502 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 8928663870207758691, guid: 60f0f84aa670acf43994648f77ea91f5, type: 3}
-  m_PrefabInstance: {fileID: 6204866081479785141}
-  m_PrefabAsset: {fileID: 0}
---- !u!4 &8026273325364727222 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 4143049715546994435, guid: 60f0f84aa670acf43994648f77ea91f5, type: 3}
   m_PrefabInstance: {fileID: 6204866081479785141}
   m_PrefabAsset: {fileID: 0}
