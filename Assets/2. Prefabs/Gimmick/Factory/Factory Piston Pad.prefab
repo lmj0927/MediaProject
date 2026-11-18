@@ -112,6 +112,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpringPadVisual
   plate: {fileID: 2792003091175682412}
+  column: {fileID: 8026273325364727222}
   flipAngle: 18
   riseHeight: 1.2
   flipTime: 0.08
@@ -319,5 +320,10 @@ Transform:
 --- !u!1 &3311518639657708502 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 8928663870207758691, guid: 60f0f84aa670acf43994648f77ea91f5, type: 3}
+  m_PrefabInstance: {fileID: 6204866081479785141}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &8026273325364727222 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 4143049715546994435, guid: 60f0f84aa670acf43994648f77ea91f5, type: 3}
   m_PrefabInstance: {fileID: 6204866081479785141}
   m_PrefabAsset: {fileID: 0}

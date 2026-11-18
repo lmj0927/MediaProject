@@ -9,6 +9,9 @@ public class SpringPadVisual : MonoBehaviour
     [Tooltip("젖혀질 판 모델.")]
     [SerializeField] private Transform plate;
 
+    [Tooltip("튀어 오르는 기둥 모델(판의 자식). 판 윗면과 휠 아랫면 사이 거리보다 높이 솟지 않게 함.")]
+    [SerializeField] private Transform column;
+
     [Tooltip("판이 젖혀지는 각도(도).")]
     [SerializeField] private float flipAngle = 50f;
 
@@ -28,6 +31,7 @@ public class SpringPadVisual : MonoBehaviour
     [Min(0f)][SerializeField] private float triggerRange = 8f;
 
     private Transform wheel;
+    private float wheelRadius;
     private Vector3 lastWheelPosition;
     private Vector3 plateRestPosition;
     private Quaternion plateRestRotation;
@@ -51,6 +55,8 @@ public class SpringPadVisual : MonoBehaviour
             var driver = FindFirstObjectByType<SphereDriver>();
             if (driver == null) return;
             wheel = driver.transform;
+            var sphere = driver.GetComponent<SphereCollider>();
+            wheelRadius = sphere != null ? sphere.radius * driver.transform.lossyScale.x : 0f;
             lastWheelPosition = wheel.position;
         }
 
@@ -77,5 +83,25 @@ public class SpringPadVisual : MonoBehaviour
         Vector3 hinge = transform.position + plateRestPosition + launch * hingeOffset;
         Vector3 rest = transform.position + plateRestPosition;
         plate.SetPositionAndRotation(hinge + tilt * (rest - hinge) + Vector3.up * (riseHeight * k), tilt * plateRestRotation);
+        LimitColumn();
+    }
+
+    /// <summary>기둥이 판 윗면 위로 솟는 높이를 판 윗면과 휠 아랫면 사이의 최단 거리까지로 제한함.</summary>
+    private void LimitColumn()
+    {
+        if (column == null || wheelRadius <= 0f) return;
+        var plateMesh = plate.GetComponent<MeshFilter>();
+        var columnMesh = column.GetComponent<MeshFilter>();
+        if (plateMesh == null || columnMesh == null) return;
+        float plateTop = plateMesh.sharedMesh.bounds.max.y;
+        float columnTop = columnMesh.sharedMesh.bounds.max.y;
+
+        // 판 윗면(평면)에서 휠 겉면까지의 최단 거리
+        Vector3 normal = plate.up;
+        float gap = Mathf.Max(0f, Vector3.Dot(wheel.position - plate.TransformPoint(new Vector3(0f, plateTop, 0f)), normal) - wheelRadius);
+
+        Vector3 local = column.localPosition;
+        float highest = plateTop - columnTop + gap / Mathf.Max(plate.lossyScale.y, 1e-4f);
+        if (local.y > highest) column.localPosition = new Vector3(local.x, highest, local.z);
     }
 }
