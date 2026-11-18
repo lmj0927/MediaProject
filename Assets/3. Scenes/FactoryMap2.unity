@@ -5372,6 +5372,80 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CoursePoint
   checkpoint: 0
   sharpCorner: 0
+--- !u!1 &1068797667
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1068797670}
+  - component: {fileID: 1068797669}
+  - component: {fileID: 1068797668}
+  m_Layer: 0
+  m_Name: Factory Rolling Drums
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1068797668
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1068797667}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 91f9d82db797d974e879dcd0e82ed21c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FallingStoneCourse
+  _stonePrefab:
+    RawGuidValue: 0238c8dbea6a8de46a50ee7b56f1bd3d
+  _transport: {fileID: 48632580}
+  _secondLaneOffset: {x: 6.2359037, y: -5.7528152, z: 44.482235}
+  _travel: {x: 100, y: 0, z: 0}
+  _rollSeconds: 4
+  _dropInterval: 4
+  _stoneRadius: 6
+  _knockbackSpeed: 12
+--- !u!114 &1068797669
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1068797667}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: -1552182283, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Fusion.Runtime.dll::Fusion.NetworkObject
+  SortKey: 96294156
+  SendPriority: 1
+  EnableInterpolation: 1
+  Flags: 262146
+  NestedObjects: []
+  NetworkedBehaviours:
+  - {fileID: 1068797668}
+  ForceRemoteRenderTimeframe: 0
+--- !u!4 &1068797670
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1068797667}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0.06344415, z: 0, w: 0.9979854}
+  m_LocalPosition: {x: -71.28215, y: 79.720695, z: 3017.5256}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1077019745
 GameObject:
   m_ObjectHideFlags: 0
@@ -12150,3 +12224,4 @@ SceneRoots:
   - {fileID: 2115794069}
   - {fileID: 959623627}
   - {fileID: 1653586483}
+  - {fileID: 1068797670}
