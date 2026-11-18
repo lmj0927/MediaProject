@@ -40,6 +40,9 @@ public class Sweeper : NetworkBehaviour
     [Tooltip("막대 속도와 무관하게 밀어내는 최소 속도(m/s).")]
     [Min(0f)][SerializeField] private float minPush = 3f;
 
+    [Tooltip("밀어낼 때 위로 띄우는 속도(m/s). 떠 있는 동안은 버티지 못해 멀리 밀려남.")]
+    [Min(0f)][SerializeField] private float lift = 0f;
+
     [Tooltip("밀어낸 뒤 회전을 새 진행 방향에 맞춤.")]
     [SerializeField] private bool matchSpin = true;
 
@@ -119,7 +122,11 @@ public class Sweeper : NetworkBehaviour
         Vector3 v = rb.linearVelocity;
         float current = Vector3.Dot(v, n);
         float target = Mathf.Max(approach * (1f + restitution), minPush);
-        if (current < target) v += n * (target - current);
+        if (current < target)
+        {
+            v += n * (target - current);
+            if (v.y < lift) v.y = lift;
+        }
         rb.linearVelocity = v;
         rb.position += n * (slice + halfThickness - distance);
 
