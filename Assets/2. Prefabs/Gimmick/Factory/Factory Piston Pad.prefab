@@ -13,6 +13,7 @@ GameObject:
   - component: {fileID: 4375566909501316686}
   - component: {fileID: 6264779644122276659}
   - component: {fileID: 6651216323785174342}
+  - component: {fileID: 3469655082813470197}
   m_Layer: 0
   m_Name: Factory Piston Pad
   m_TagString: Untagged
@@ -119,6 +120,20 @@ MonoBehaviour:
   returnTime: 0.9
   hingeOffset: 4.4
   triggerRange: 8
+--- !u!114 &3469655082813470197
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2280284934386946917}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9f374fbe81da5d04b803227be95b2770, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpringPadAirGravity
+  gravityScale: 3
+  maxTime: 5
 --- !u!1 &7574592167775940041
 GameObject:
   m_ObjectHideFlags: 0
