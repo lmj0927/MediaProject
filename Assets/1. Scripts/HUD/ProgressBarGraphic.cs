@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -9,12 +10,21 @@ public class ProgressBarGraphic : MonoBehaviour
     [HideInInspector] public float reached;
     [HideInInspector] public float[] checkpoints = System.Array.Empty<float>();
 
+    /// <summary>체크포인트가 많을 때용 표시. 다음 체크포인트만 크게, 나머지는 작은 눈금으로 그리고 옆에 통과 수를 적음.</summary>
+    [HideInInspector] public bool compact;
+
     private const float Padding = 25f;
     private static readonly Vector2 Left = new Vector2(0f, .5f);
     private static readonly Vector2 Center = new Vector2(.5f, .5f);
     private readonly List<Image> markers = new();
     private Image fill;
     private RectTransform cursor;
+    private TextMeshProUGUI countText;
+    private int shownPassed = -1;
+    private int shownTotal = -1;
+
+    private static readonly Vector2 MarkerSize = new Vector2(27, 34);
+    private static readonly Vector2 SmallMarkerSize = new Vector2(9, 14);
 
     private void Awake()
     {
@@ -28,6 +38,9 @@ public class ProgressBarGraphic : MonoBehaviour
         fill.color = GameUi.Yellow;
         cursor = GameUi.Child("Progress Dot", transform, Left, Center, new Vector2(Padding, 0), new Vector2(24, 24));
         GameUi.Picture(cursor, sprites.ProgressDot);
+        countText = GameUi.Label(GameUi.Child("Count", transform, new Vector2(1f, .5f), Left, new Vector2(14, 0), new Vector2(140, 40)), "", 26, TextAlignmentOptions.Left);
+        countText.color = Color.white;
+        countText.gameObject.SetActive(false);
     }
 
     public void Redraw()
@@ -46,6 +59,8 @@ public class ProgressBarGraphic : MonoBehaviour
             markers.Add(GameUi.Picture(marker, sprites.Checkpoint));
         }
         float furthest = Mathf.Max(progress, reached) + 1e-4f;
+        int passed = 0;
+        bool nextFound = false;
         for (int i = 0; i < markers.Count; i++)
         {
             var marker = markers[i];
@@ -53,7 +68,20 @@ public class ProgressBarGraphic : MonoBehaviour
             if (!marker.enabled) continue;
             float fraction = i == 0 ? 0f : checkpoints[i - 1];
             marker.rectTransform.anchoredPosition = new Vector2(Padding + fraction * trackWidth, 0);
-            marker.sprite = fraction <= furthest ? sprites.CheckpointPassed : sprites.Checkpoint;
+            bool isPassed = fraction <= furthest;
+            marker.sprite = isPassed ? sprites.CheckpointPassed : sprites.Checkpoint;
+            if (isPassed && i > 0) passed++;
+            bool isNext = !isPassed && !nextFound;
+            if (isNext) nextFound = true;
+            marker.rectTransform.sizeDelta = compact && !isNext ? SmallMarkerSize : MarkerSize;
+        }
+
+        countText.gameObject.SetActive(compact);
+        if (compact && (passed != shownPassed || checkpoints.Length != shownTotal))
+        {
+            shownPassed = passed;
+            shownTotal = checkpoints.Length;
+            countText.text = $"{passed} / {checkpoints.Length}";
         }
     }
 }

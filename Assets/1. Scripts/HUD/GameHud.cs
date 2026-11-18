@@ -70,6 +70,9 @@ public class GameHud : MonoBehaviour
 
     [Tooltip("진행바 아래 나침반을 보여줌. 끄면 거리 표시가 진행바 바로 아래로 올라감.")]
     [SerializeField] private bool showCompass = false;
+
+    [Tooltip("진행바를 체크포인트가 많을 때용 표시로 바꿈. 다음 체크포인트만 크게, 나머지는 작은 눈금으로 그리고 옆에 통과 수를 적음.")]
+    [SerializeField] private bool compactProgress = false;
     [SerializeField] private float edgeInset = 70f;
 
     private RectTransform root;
@@ -275,6 +278,7 @@ public class GameHud : MonoBehaviour
         // 진행바는 지금 위치를 따라 뒤로도 줄지만, 마지막으로 지난 체크포인트 아래로는 안 내려감
         progressBar.progress = Mathf.Max(courseTracker.along, course.PassedCheckpoint(courseTracker)) / total;
         progressBar.reached = courseTracker.best / total;
+        progressBar.compact = compactProgress;
         progressBar.Redraw();
 
         // 나침반: 경로를 따라 조금 앞의 곳을 가리킴(길 밖에 있으면 길로 돌아가는 쪽이 됨)
