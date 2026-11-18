@@ -49,7 +49,7 @@ public class SidePiston : MonoBehaviour
     [Min(0.1f)][SerializeField] private float halfWidth = 6f;
 
     [Header("Push")]
-    [Tooltip("기둥에 걸린 휠을 날리는 최소 속도(m/s). 기둥이 나가는 속도가 더 빠르면 그 속도로 밀림.")]
+    [Tooltip("기둥에 걸린 휠이 밀려 나가는 속도(m/s). 기둥이 더 빨리 나가면 휠은 기둥 끝에 실려 가다가 이 속도로 놓임.")]
     [Min(0f)][SerializeField] private float pushSpeed = 26f;
 
     [Tooltip("날릴 때 위로 띄우는 속도(m/s).")]
@@ -61,7 +61,6 @@ public class SidePiston : MonoBehaviour
     private SphereCollider wheelSphere;
     private float nextWheelSearch;
     private PlatformTilt platform;
-    private float lastExtension;
     private bool soundPlayed;
 
     private void Awake()
@@ -96,10 +95,11 @@ public class SidePiston : MonoBehaviour
     private void Update()
     {
         if (!TryGetTime(out float time)) return;
-        Pose(Extension(time, out float warn, out _), warn);
+        float shown = Extension(time, out float warn, out bool extendingNow);
+        Pose(shown, warn, extendingNow);
     }
 
-    private void Pose(float extension, float warn)
+    private void Pose(float extension, float warn, bool extending)
     {
         float along = travel * extension + warnPeek * warn;
 
@@ -119,7 +119,8 @@ public class SidePiston : MonoBehaviour
         }
 
         if (body == null) return;
-        body.enabled = along > 0.2f;
+        // 나오는 동안에는 충돌 상자를 꺼서 물리 충돌로 휠이 튕겨 나가지 않게 함(미는 것은 따로 처리)
+        body.enabled = along > 0.2f && !extending;
         body.center = new Vector3(body.center.x, body.center.y, along * 0.5f);
         body.size = new Vector3(body.size.x, body.size.y, Mathf.Max(0.1f, along));
     }
@@ -128,9 +129,7 @@ public class SidePiston : MonoBehaviour
     {
         if (!TryGetTime(out float time) || !networkObject.HasStateAuthority) return;
         float extension = Extension(time, out float warn, out bool extending);
-        Pose(extension, warn);
-        float faceSpeed = travel * Mathf.Max(0f, extension - lastExtension) / Mathf.Max(Time.fixedDeltaTime, 1e-4f);
-        lastExtension = extension;
+        Pose(extension, warn, extending);
         if (!extending) { soundPlayed = false; return; }
 
         if (wheel == null)
@@ -160,7 +159,7 @@ public class SidePiston : MonoBehaviour
 
         Vector3 v = wheelBody.linearVelocity;
         Vector3 change = Vector3.zero;
-        float target = Mathf.Max(faceSpeed, pushSpeed);
+        float target = pushSpeed;
         float along = Vector3.Dot(v, dir);
         if (along < target) change += dir * (target - along);
         if (v.y < lift) change += Vector3.up * (lift - v.y);
