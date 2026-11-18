@@ -409,6 +409,9 @@ public class PlatformTilt : NetworkBehaviour, IAfterTick
         // Host 루트는 물리 틱 포즈 유지 (시각은 LateUpdate에서 modelRoot만)
         if (Object.HasStateAuthority || sphere == null) return;
 
+        // 클라이언트에서도 HUD가 읽는 기울기 값을 최신으로 맞춤
+        currentTilt = NetTilt;
+
         // Client: 구체 NetworkTransform 보간에 맞춰 매 프레임 붙임
         Vector3 pos = sphere.position + NetTilt * Vector3.up * HeightOffset;
         transform.SetPositionAndRotation(pos, NetTilt);
