@@ -14384,19 +14384,19 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 836274565535521320, guid: b4527203a380d5040aebe0d16c6589dd, type: 3}
       propertyPath: m_LocalRotation.w
-      value: 0.020685248
+      value: 0.029159963
       objectReference: {fileID: 0}
     - target: {fileID: 836274565535521320, guid: b4527203a380d5040aebe0d16c6589dd, type: 3}
       propertyPath: m_LocalRotation.x
-      value: 0
+      value: -0.30056524
       objectReference: {fileID: 0}
     - target: {fileID: 836274565535521320, guid: b4527203a380d5040aebe0d16c6589dd, type: 3}
       propertyPath: m_LocalRotation.y
-      value: 0.999786
+      value: 0.9532711
       objectReference: {fileID: 0}
     - target: {fileID: 836274565535521320, guid: b4527203a380d5040aebe0d16c6589dd, type: 3}
       propertyPath: m_LocalRotation.z
-      value: 0
+      value: -0.009194102
       objectReference: {fileID: 0}
     - target: {fileID: 836274565535521320, guid: b4527203a380d5040aebe0d16c6589dd, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
@@ -14413,6 +14413,14 @@ PrefabInstance:
     - target: {fileID: 2280284934386946917, guid: b4527203a380d5040aebe0d16c6589dd, type: 3}
       propertyPath: m_Name
       value: Factory Piston Pad
+      objectReference: {fileID: 0}
+    - target: {fileID: 5969524374855434984, guid: b4527203a380d5040aebe0d16c6589dd, type: 3}
+      propertyPath: period
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 6264779644122276659, guid: b4527203a380d5040aebe0d16c6589dd, type: 3}
+      propertyPath: jumpForce
+      value: 36
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -29231,19 +29239,19 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 836274565535521320, guid: b4527203a380d5040aebe0d16c6589dd, type: 3}
       propertyPath: m_LocalRotation.w
-      value: -0.05620671
+      value: 0.9498208
       objectReference: {fileID: 0}
     - target: {fileID: 836274565535521320, guid: b4527203a380d5040aebe0d16c6589dd, type: 3}
       propertyPath: m_LocalRotation.x
-      value: 0
+      value: -0.02715298
       objectReference: {fileID: 0}
     - target: {fileID: 836274565535521320, guid: b4527203a380d5040aebe0d16c6589dd, type: 3}
       propertyPath: m_LocalRotation.y
-      value: 0.99841917
+      value: 0.08611826
       objectReference: {fileID: 0}
     - target: {fileID: 836274565535521320, guid: b4527203a380d5040aebe0d16c6589dd, type: 3}
       propertyPath: m_LocalRotation.z
-      value: 0
+      value: -0.2994774
       objectReference: {fileID: 0}
     - target: {fileID: 836274565535521320, guid: b4527203a380d5040aebe0d16c6589dd, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
@@ -29260,6 +29268,18 @@ PrefabInstance:
     - target: {fileID: 2280284934386946917, guid: b4527203a380d5040aebe0d16c6589dd, type: 3}
       propertyPath: m_Name
       value: Factory Piston Pad
+      objectReference: {fileID: 0}
+    - target: {fileID: 5969524374855434984, guid: b4527203a380d5040aebe0d16c6589dd, type: 3}
+      propertyPath: period
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 5969524374855434984, guid: b4527203a380d5040aebe0d16c6589dd, type: 3}
+      propertyPath: phaseOffset
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 6264779644122276659, guid: b4527203a380d5040aebe0d16c6589dd, type: 3}
+      propertyPath: jumpForce
+      value: 36
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

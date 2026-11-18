@@ -1,8 +1,9 @@
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-/// <summary>코스의 현재 위치와 통과한 체크포인트를 표시한다.</summary>
+/// <summary>코스의 현재 위치와 통과한 체크포인트를 표시한다. 다음 체크포인트만 크게, 나머지는 작은 눈금으로 그리고 옆에 통과 수를 적는다.</summary>
 public class ProgressBarGraphic : MonoBehaviour
 {
     [HideInInspector] public float progress;
@@ -15,6 +16,12 @@ public class ProgressBarGraphic : MonoBehaviour
     private readonly List<Image> markers = new();
     private Image fill;
     private RectTransform cursor;
+    private TextMeshProUGUI countText;
+    private int shownPassed = -1;
+    private int shownTotal = -1;
+
+    private static readonly Vector2 MarkerSize = new Vector2(27, 34);
+    private static readonly Vector2 SmallMarkerSize = new Vector2(9, 14);
 
     private void Awake()
     {
@@ -28,6 +35,8 @@ public class ProgressBarGraphic : MonoBehaviour
         fill.color = GameUi.Yellow;
         cursor = GameUi.Child("Progress Dot", transform, Left, Center, new Vector2(Padding, 0), new Vector2(24, 24));
         GameUi.Picture(cursor, sprites.ProgressDot);
+        countText = GameUi.Label(GameUi.Child("Count", transform, new Vector2(1f, .5f), Left, new Vector2(14, 0), new Vector2(140, 40)), "", 26, TextAlignmentOptions.Left);
+        countText.color = Color.white;
     }
 
     public void Redraw()
@@ -46,6 +55,8 @@ public class ProgressBarGraphic : MonoBehaviour
             markers.Add(GameUi.Picture(marker, sprites.Checkpoint));
         }
         float furthest = Mathf.Max(progress, reached) + 1e-4f;
+        int passed = 0;
+        bool nextFound = false;
         for (int i = 0; i < markers.Count; i++)
         {
             var marker = markers[i];
@@ -53,7 +64,19 @@ public class ProgressBarGraphic : MonoBehaviour
             if (!marker.enabled) continue;
             float fraction = i == 0 ? 0f : checkpoints[i - 1];
             marker.rectTransform.anchoredPosition = new Vector2(Padding + fraction * trackWidth, 0);
-            marker.sprite = fraction <= furthest ? sprites.CheckpointPassed : sprites.Checkpoint;
+            bool isPassed = fraction <= furthest;
+            marker.sprite = isPassed ? sprites.CheckpointPassed : sprites.Checkpoint;
+            if (isPassed && i > 0) passed++;
+            bool isNext = !isPassed && !nextFound;
+            if (isNext) nextFound = true;
+            marker.rectTransform.sizeDelta = isNext ? MarkerSize : SmallMarkerSize;
+        }
+
+        if (passed != shownPassed || checkpoints.Length != shownTotal)
+        {
+            shownPassed = passed;
+            shownTotal = checkpoints.Length;
+            countText.text = $"{passed} / {checkpoints.Length}";
         }
     }
 }
