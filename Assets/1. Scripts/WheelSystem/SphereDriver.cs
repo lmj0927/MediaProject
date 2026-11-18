@@ -29,8 +29,14 @@ public class SphereDriver : NetworkBehaviour, IAfterTick
     private SphereCollider sphereCollider;
     private TickVisualInterpolator visual;
     private float knockbackTimer;
+    private const float ImpactSpeed = 6f;
+    private const float ImpactMaxSpeed = 20f;
+    private const float ImpactCooldown = .3f;
+    private TickTimer impactSoundCooldown;
 
     public bool IsGrounded { get; private set; }
+
+    internal event System.Action Respawned;
 
     /// <summary>현재 수평 속도 크기. UI나 카메라 연출에 사용함.</summary>
     public float HorizontalSpeed
@@ -70,6 +76,51 @@ public class SphereDriver : NetworkBehaviour, IAfterTick
         Simulate();
     }
 
+    private void OnCollisionEnter(Collision collision)
+    {
+        if (Object == null || !Object.IsValid || !Object.HasStateAuthority ||
+            !IsGround(collision.collider) || collision.collider.GetComponentInParent<Hammer>() != null)
+            return;
+
+        float strongest = 0f;
+        Vector3 point = body.position;
+        Vector3 incoming = Vector3.ProjectOnPlane(collision.relativeVelocity, Vector3.up);
+        for (int i = 0; i < collision.contactCount; i++)
+        {
+            ContactPoint contact = collision.GetContact(i);
+            if (Mathf.Abs(contact.normal.y) > .7f) continue;
+            float speed = Mathf.Abs(Vector3.Dot(incoming, contact.normal));
+            if (speed <= strongest) continue;
+            strongest = speed;
+            point = contact.point;
+        }
+
+        ReportImpactSound(point, strongest);
+    }
+
+    internal void ReportImpactSound(Vector3 point, float speed, bool hammer = false)
+    {
+        if (Object == null || !Object.IsValid || !Object.HasStateAuthority ||
+            speed < (hammer ? .01f : ImpactSpeed) || !impactSoundCooldown.ExpiredOrNotRunning(Runner))
+            return;
+
+        impactSoundCooldown = TickTimer.CreateFromSeconds(Runner, ImpactCooldown);
+        float intensity = hammer ? 1f : Mathf.Lerp(.7f, 1f, Mathf.InverseLerp(ImpactSpeed, ImpactMaxSpeed, speed));
+        RPC_PlayTransportSound(SfxCue.Collision, point, intensity);
+    }
+
+    internal void PlayTransportSound(SfxCue cue, Vector3 position)
+    {
+        if (Object != null && Object.IsValid && Object.HasStateAuthority)
+            RPC_PlayTransportSound(cue, position, 1f);
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All, Channel = RpcChannel.Unreliable)]
+    private void RPC_PlayTransportSound(SfxCue cue, Vector3 position, float intensity)
+    {
+        SFXManager.PlayWorld(cue, position, intensity);
+    }
+
     internal void RespawnAt(Vector3 position)
     {
         GetComponent<NetworkTransform>().Teleport(position, Quaternion.identity);
@@ -80,6 +131,8 @@ public class SphereDriver : NetworkBehaviour, IAfterTick
         knockbackTimer = 0f;
         IsGrounded = false;
         visual.ResetTo(position, Quaternion.identity);
+        impactSoundCooldown = TickTimer.None;
+        Respawned?.Invoke();
     }
 
     void IAfterTick.AfterTick()
@@ -125,8 +178,6 @@ public class SphereDriver : NetworkBehaviour, IAfterTick
 
         Vector3 error = ShapeResponse(targetAngular - body.angularVelocity);
         float gain = IsGrounded ? config.torqueGain : config.torqueGain * config.airControlFactor;
-        gain *= ControlFactor;
-
         body.AddTorque(error * gain, ForceMode.Acceleration);
         ApplyDriveAssist(downhill, rollAxis, tilt);
     }
@@ -150,7 +201,7 @@ public class SphereDriver : NetworkBehaviour, IAfterTick
         // 가속 곡선에는 방향과 무관한 지금 빠르기를 넣음. 빠르게 구르는 중에는 옆으로 미는 힘도 같이 약해짐.
         Vector3 flat = body.linearVelocity;
         flat.y = 0f;
-        float accel = config.driveAcceleration * tilt * tilt * AccelerationScale(flat.magnitude) * ControlFactor;
+        float accel = config.driveAcceleration * tilt * tilt * AccelerationScale(flat.magnitude);
         if (accel <= 0f) return;
 
         body.AddForce(downhill * accel, ForceMode.Acceleration);
@@ -198,7 +249,7 @@ public class SphereDriver : NetworkBehaviour, IAfterTick
     private void ApplyIdleDamping()
     {
         if (!IsGrounded || config.idleDamping <= 0f) return;
-        body.AddTorque(-body.angularVelocity * (config.idleDamping * ControlFactor), ForceMode.Acceleration);
+        body.AddTorque(-body.angularVelocity * config.idleDamping, ForceMode.Acceleration);
     }
 
     private readonly RaycastHit[] groundHits = new RaycastHit[32];
@@ -245,10 +296,7 @@ public class SphereDriver : NetworkBehaviour, IAfterTick
         body.AddForce(force, ForceMode.Impulse);
     }
 
-    /// <summary>강한 충격 직후면 조작이 약해짐. 1이면 평소.</summary>
-    private float ControlFactor => knockbackTimer > 0f ? config.knockbackControl : 1f;
-
-    /// <summary>넉백(해머 등)으로 조작이 약해진 상태인지.</summary>
+    /// <summary>강한 충격 뒤 넉백 감쇠가 적용되는 구간인지.</summary>
     public bool IsKnockedBack => knockbackTimer > 0f;
 
     /// <summary>Host 접촉 보정. 발사/넉백 상태 없이 겹침과 안쪽 속도만 제거한다.</summary>
@@ -261,7 +309,12 @@ public class SphereDriver : NetworkBehaviour, IAfterTick
         OffsetObstacleSupport(displacement);
 
         float inward = Vector3.Dot(body.linearVelocity, direction);
-        if (inward < 0f) body.linearVelocity -= direction * inward;
+        if (inward < 0f)
+        {
+            body.linearVelocity -= direction * inward;
+            if (Mathf.Abs(direction.y) <= .7f)
+                ReportImpactSound(body.position - direction * Radius, -inward);
+        }
     }
 
     internal void OffsetObstacleSupport(Vector3 displacement)
@@ -272,11 +325,10 @@ public class SphereDriver : NetworkBehaviour, IAfterTick
     }
 
     /// <summary>
-    /// 해머 같은 강한 충격. Host SA에서만.
-    /// 속도를 바로 바꾸고 회전을 새 진행 방향에 맞춘 뒤(미끄러지지 않고 굴러감), 잠시 조작을 약하게 함.
-    /// 조작이 그대로면 땅을 잡는 힘 때문에 옆으로 밀린 속도가 바로 사라짐.
+    /// 장애물 충격으로 속도를 바로 바꾸고 회전을 새 진행 방향에 맞춤. Host SA에서만.
+    /// 강한 충격의 감쇠 구간은 첫 타격부터 시작하고, 구간 안의 추가 타격으로 연장하지 않음.
     /// </summary>
-    public void ApplyKnockback(Vector3 velocityChange)
+    public void ApplyKnockback(Vector3 velocityChange, bool applyDamping = true)
     {
         if (Object != null && Object.IsValid && !Object.HasStateAuthority)
             return;
@@ -288,7 +340,8 @@ public class SphereDriver : NetworkBehaviour, IAfterTick
         Vector3 yaw = Vector3.Project(body.angularVelocity, Vector3.up);
         body.angularVelocity = Vector3.Cross(Vector3.up, horizontal) / Radius + yaw;
 
-        knockbackTimer = config.knockbackRecoverTime;
+        if (applyDamping && knockbackTimer <= 0f)
+            knockbackTimer = config.knockbackRecoverTime;
     }
 
     /// <summary>

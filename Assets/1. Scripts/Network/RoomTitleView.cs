@@ -50,6 +50,7 @@ public sealed class RoomTitleView : MonoBehaviour
         _codeRow.SetActive(!create);
         SetMenuAvailable(false);
         _form.SetActive(true);
+        SFXManager.PopupOpened();
         UpdateCapacity();
         _nickname.Select();
         _nickname.ActivateInputField();

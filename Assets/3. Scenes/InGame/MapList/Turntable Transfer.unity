@@ -3079,7 +3079,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::TraversalSceneManager
   IsSceneTakeOverEnabled: 1
   LogSceneLoadErrors: 1
-  ScenePath: Assets/3. Scenes/InGame/Turntable Transfer.unity
+  ScenePath: Assets/3. Scenes/InGame/MapList/Turntable Transfer.unity
 --- !u!1 &1392227424
 GameObject:
   m_ObjectHideFlags: 0
@@ -3507,7 +3507,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5881138210835269005, guid: 50d49fa5ea64a594bb0ed7f25137142e, type: 3}
       propertyPath: m_Enabled
-      value: 0
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5881138210835269005, guid: 50d49fa5ea64a594bb0ed7f25137142e, type: 3}
+      propertyPath: rotationSpeed
+      value: -3.5
       objectReference: {fileID: 0}
     - target: {fileID: 6564487110095040403, guid: 50d49fa5ea64a594bb0ed7f25137142e, type: 3}
       propertyPath: m_LocalScale.x
@@ -3535,7 +3539,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6564487110095040403, guid: 50d49fa5ea64a594bb0ed7f25137142e, type: 3}
       propertyPath: m_LocalRotation.w
-      value: 0.9063078
+      value: 0.9681477
       objectReference: {fileID: 0}
     - target: {fileID: 6564487110095040403, guid: 50d49fa5ea64a594bb0ed7f25137142e, type: 3}
       propertyPath: m_LocalRotation.x
@@ -3543,7 +3547,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6564487110095040403, guid: 50d49fa5ea64a594bb0ed7f25137142e, type: 3}
       propertyPath: m_LocalRotation.y
-      value: -0.4226183
+      value: -0.25038004
       objectReference: {fileID: 0}
     - target: {fileID: 6564487110095040403, guid: 50d49fa5ea64a594bb0ed7f25137142e, type: 3}
       propertyPath: m_LocalRotation.z
@@ -3571,9 +3575,6 @@ PrefabInstance:
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 5787810050968401193, guid: 50d49fa5ea64a594bb0ed7f25137142e, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 1571673243}
-    - targetCorrespondingSourceObject: {fileID: 5787810050968401193, guid: 50d49fa5ea64a594bb0ed7f25137142e, type: 3}
-      insertIndex: -1
       addedObject: {fileID: 1571673242}
   m_SourcePrefab: {fileID: 100100000, guid: 50d49fa5ea64a594bb0ed7f25137142e, type: 3}
 --- !u!4 &1571673240 stripped
@@ -3598,23 +3599,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 923e62c7f3d8e664f902b3497f13d2c5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::NetworkObstacleOrigin
---- !u!114 &1571673243
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1571673241}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 81bfbad52f6da2c4787254c810e4599c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ithappy.OscillateRotation
-  rotationAxis: {x: 0, y: 1, z: 0}
-  rotationAngle: -70
-  duration: 36
-  useRandomDelay: 0
-  maxRandomDelay: 0
+  rideableSpin: 1
 --- !u!1 &1615540556
 GameObject:
   m_ObjectHideFlags: 0
@@ -3909,7 +3894,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5881138210835269005, guid: 50d49fa5ea64a594bb0ed7f25137142e, type: 3}
       propertyPath: m_Enabled
-      value: 0
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5881138210835269005, guid: 50d49fa5ea64a594bb0ed7f25137142e, type: 3}
+      propertyPath: rotationSpeed
+      value: 3.5
       objectReference: {fileID: 0}
     - target: {fileID: 6564487110095040403, guid: 50d49fa5ea64a594bb0ed7f25137142e, type: 3}
       propertyPath: m_LocalScale.x
@@ -3937,7 +3926,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6564487110095040403, guid: 50d49fa5ea64a594bb0ed7f25137142e, type: 3}
       propertyPath: m_LocalRotation.w
-      value: 0.9063078
+      value: 0.99691737
       objectReference: {fileID: 0}
     - target: {fileID: 6564487110095040403, guid: 50d49fa5ea64a594bb0ed7f25137142e, type: 3}
       propertyPath: m_LocalRotation.x
@@ -3945,7 +3934,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6564487110095040403, guid: 50d49fa5ea64a594bb0ed7f25137142e, type: 3}
       propertyPath: m_LocalRotation.y
-      value: -0.4226183
+      value: 0.07845909
       objectReference: {fileID: 0}
     - target: {fileID: 6564487110095040403, guid: 50d49fa5ea64a594bb0ed7f25137142e, type: 3}
       propertyPath: m_LocalRotation.z
@@ -3973,9 +3962,6 @@ PrefabInstance:
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 5787810050968401193, guid: 50d49fa5ea64a594bb0ed7f25137142e, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 1682152520}
-    - targetCorrespondingSourceObject: {fileID: 5787810050968401193, guid: 50d49fa5ea64a594bb0ed7f25137142e, type: 3}
-      insertIndex: -1
       addedObject: {fileID: 1682152519}
   m_SourcePrefab: {fileID: 100100000, guid: 50d49fa5ea64a594bb0ed7f25137142e, type: 3}
 --- !u!4 &1682152517 stripped
@@ -4000,23 +3986,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 923e62c7f3d8e664f902b3497f13d2c5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::NetworkObstacleOrigin
---- !u!114 &1682152520
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1682152518}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 81bfbad52f6da2c4787254c810e4599c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ithappy.OscillateRotation
-  rotationAxis: {x: 0, y: 1, z: 0}
-  rotationAngle: -70
-  duration: 36
-  useRandomDelay: 0
-  maxRandomDelay: 0
+  rideableSpin: 1
 --- !u!1 &1685583415
 GameObject:
   m_ObjectHideFlags: 0
@@ -4263,7 +4233,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5881138210835269005, guid: 50d49fa5ea64a594bb0ed7f25137142e, type: 3}
       propertyPath: m_Enabled
-      value: 0
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5881138210835269005, guid: 50d49fa5ea64a594bb0ed7f25137142e, type: 3}
+      propertyPath: rotationSpeed
+      value: -3.5
       objectReference: {fileID: 0}
     - target: {fileID: 6564487110095040403, guid: 50d49fa5ea64a594bb0ed7f25137142e, type: 3}
       propertyPath: m_LocalScale.x
@@ -4291,7 +4265,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6564487110095040403, guid: 50d49fa5ea64a594bb0ed7f25137142e, type: 3}
       propertyPath: m_LocalRotation.w
-      value: 0.9063078
+      value: 0.56640625
       objectReference: {fileID: 0}
     - target: {fileID: 6564487110095040403, guid: 50d49fa5ea64a594bb0ed7f25137142e, type: 3}
       propertyPath: m_LocalRotation.x
@@ -4299,7 +4273,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6564487110095040403, guid: 50d49fa5ea64a594bb0ed7f25137142e, type: 3}
       propertyPath: m_LocalRotation.y
-      value: -0.4226183
+      value: 0.82412624
       objectReference: {fileID: 0}
     - target: {fileID: 6564487110095040403, guid: 50d49fa5ea64a594bb0ed7f25137142e, type: 3}
       propertyPath: m_LocalRotation.z
@@ -4327,9 +4301,6 @@ PrefabInstance:
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 5787810050968401193, guid: 50d49fa5ea64a594bb0ed7f25137142e, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 1773888259}
-    - targetCorrespondingSourceObject: {fileID: 5787810050968401193, guid: 50d49fa5ea64a594bb0ed7f25137142e, type: 3}
-      insertIndex: -1
       addedObject: {fileID: 1773888258}
   m_SourcePrefab: {fileID: 100100000, guid: 50d49fa5ea64a594bb0ed7f25137142e, type: 3}
 --- !u!4 &1773888256 stripped
@@ -4354,23 +4325,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 923e62c7f3d8e664f902b3497f13d2c5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::NetworkObstacleOrigin
---- !u!114 &1773888259
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1773888257}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 81bfbad52f6da2c4787254c810e4599c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ithappy.OscillateRotation
-  rotationAxis: {x: 0, y: 1, z: 0}
-  rotationAngle: -70
-  duration: 36
-  useRandomDelay: 0
-  maxRandomDelay: 0
+  rideableSpin: 1
 --- !u!1001 &1776146267
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -5744,7 +5699,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5881138210835269005, guid: 50d49fa5ea64a594bb0ed7f25137142e, type: 3}
       propertyPath: m_Enabled
-      value: 0
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5881138210835269005, guid: 50d49fa5ea64a594bb0ed7f25137142e, type: 3}
+      propertyPath: rotationSpeed
+      value: 3.5
       objectReference: {fileID: 0}
     - target: {fileID: 6564487110095040403, guid: 50d49fa5ea64a594bb0ed7f25137142e, type: 3}
       propertyPath: m_LocalScale.x
@@ -5772,7 +5731,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6564487110095040403, guid: 50d49fa5ea64a594bb0ed7f25137142e, type: 3}
       propertyPath: m_LocalRotation.w
-      value: 0.9063078
+      value: -0.26723844
       objectReference: {fileID: 0}
     - target: {fileID: 6564487110095040403, guid: 50d49fa5ea64a594bb0ed7f25137142e, type: 3}
       propertyPath: m_LocalRotation.x
@@ -5780,7 +5739,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6564487110095040403, guid: 50d49fa5ea64a594bb0ed7f25137142e, type: 3}
       propertyPath: m_LocalRotation.y
-      value: -0.4226183
+      value: -0.9636305
       objectReference: {fileID: 0}
     - target: {fileID: 6564487110095040403, guid: 50d49fa5ea64a594bb0ed7f25137142e, type: 3}
       propertyPath: m_LocalRotation.z
@@ -5808,9 +5767,6 @@ PrefabInstance:
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 5787810050968401193, guid: 50d49fa5ea64a594bb0ed7f25137142e, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 2087025513}
-    - targetCorrespondingSourceObject: {fileID: 5787810050968401193, guid: 50d49fa5ea64a594bb0ed7f25137142e, type: 3}
-      insertIndex: -1
       addedObject: {fileID: 2087025512}
   m_SourcePrefab: {fileID: 100100000, guid: 50d49fa5ea64a594bb0ed7f25137142e, type: 3}
 --- !u!4 &2087025510 stripped
@@ -5835,23 +5791,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 923e62c7f3d8e664f902b3497f13d2c5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::NetworkObstacleOrigin
---- !u!114 &2087025513
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2087025511}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 81bfbad52f6da2c4787254c810e4599c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ithappy.OscillateRotation
-  rotationAxis: {x: 0, y: 1, z: 0}
-  rotationAngle: -70
-  duration: 36
-  useRandomDelay: 0
-  maxRandomDelay: 0
+  rideableSpin: 1
 --- !u!1 &2118786939
 GameObject:
   m_ObjectHideFlags: 0

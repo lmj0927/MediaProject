@@ -55,7 +55,7 @@ internal sealed class RotatingObstacleContacts
         }
 
         foreach (var transport in transports)
-            if (transport.RotationKick != Vector3.zero) transport.Sphere.ApplyKnockback(transport.RotationKick);
+            if (transport.RotationKick != Vector3.zero) transport.Sphere.ApplyKnockback(transport.RotationKick, applyDamping: false);
     }
 
     public void Resolve(Vector3 position, float radius, Collider[] colliders, bool stepTarget, Vector3 angularVelocity = default)

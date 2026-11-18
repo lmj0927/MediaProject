@@ -4,12 +4,13 @@ using UnityEngine.UI;
 /// <summary>중앙을 비우고 화면 주변에서 바깥으로 흐르는 속도선. 텍스처나 오브젝트 생성 없이 그림.</summary>
 public class SpeedStreaksGraphic : MaskableGraphic
 {
+    internal const float VisibleIntensity = .001f;
     private float intensity;
     private float phase;
 
     public void SetSpeed(float value, float dt)
     {
-        if (value <= 0.001f && intensity <= 0.001f) return;
+        if (value <= VisibleIntensity && intensity <= VisibleIntensity) return;
         intensity = value;
         phase = Mathf.Repeat(phase + dt * Mathf.Lerp(0.6f, 1.9f, intensity), 1f);
         SetVerticesDirty();
@@ -18,7 +19,7 @@ public class SpeedStreaksGraphic : MaskableGraphic
     protected override void OnPopulateMesh(VertexHelper vh)
     {
         vh.Clear();
-        if (intensity <= 0.001f) return;
+        if (intensity <= VisibleIntensity) return;
         Rect rect = rectTransform.rect;
         Vector2 center = new Vector2(rect.center.x, rect.yMin + rect.height * 0.56f);
         float scale = rect.height / 1080f;

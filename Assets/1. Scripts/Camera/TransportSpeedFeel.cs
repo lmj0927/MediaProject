@@ -89,6 +89,8 @@ public class TransportSpeedFeel : MonoBehaviour
         FieldOfViewOffset = extraFieldOfView * Intensity;
         view.fieldOfView = baseFieldOfView + FieldOfViewOffset;
         streaks.SetSpeed(Intensity, Time.deltaTime);
+        float peakPitchSpeed = Mathf.Max(startSpeed + .1f, fullSpeed * 2f);
+        SFXManager.SetTransportSpeed(this, Intensity, Mathf.InverseLerp(startSpeed, peakPitchSpeed, HorizontalSpeed));
     }
 
     private void ResetEffect()
@@ -98,6 +100,7 @@ public class TransportSpeedFeel : MonoBehaviour
         speedSpring.MoveToInstant(0f);
         view.fieldOfView = baseFieldOfView;
         streaks.SetSpeed(0f, 0f);
+        SFXManager.SetTransportSpeed(this, 0f, 0f);
     }
 
     private void OnDisable()

@@ -51,6 +51,7 @@ public class Hammer : NetworkBehaviour, IAfterTick
     private Vector3 _headEndB;
     private float _headCapsuleRadius;
     private TickVisualInterpolator _visual;
+    private int _lastSoundSweep = int.MinValue;
 
     private void Awake()
     {
@@ -216,6 +217,12 @@ public class Hammer : NetworkBehaviour, IAfterTick
                 continue;
 
             sphere.ApplyKnockback(-(1f + _restitution) * approach * normal);
+            int sweep = Mathf.FloorToInt((time / Mathf.Max(.01f, _period) + _phaseOffset + .25f) * 2f);
+            if (sweep != _lastSoundSweep)
+            {
+                _lastSoundSweep = sweep;
+                sphere.ReportImpactSound(onSegment, -approach, hammer: true);
+            }
             return true;
         }
         return false;

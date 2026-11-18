@@ -77,6 +77,7 @@ internal sealed class TransportRecovery
         bool resetTransport = contact.y <= _waterSurface.position.y + WaterContactTolerance;
         if (resetTransport)
         {
+            _wheel.PlayTransportSound(SfxCue.WaterFall, contact);
             _wheel.RespawnAt(_recoveryPosition);
             _deck.ResetForRespawn(_recoveryPosition);
         }
@@ -88,6 +89,7 @@ internal sealed class TransportRecovery
                 if (checkpoint == null || !new Bounds(checkpoint.position, CheckpointHalfSize * 2f).Contains(contact)) continue;
                 _latestCheckpoint = i;
                 _recoveryPosition = checkpoint.position + Vector3.up * (_deck.SphereRadius + .15f);
+                _wheel.PlayTransportSound(SfxCue.Checkpoint, contact);
                 break;
             }
         }

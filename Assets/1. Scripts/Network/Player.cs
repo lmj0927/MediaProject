@@ -330,7 +330,11 @@ public class Player : NetworkBehaviour, IHoldable, ILaunchable
         if (_cc == null)
             return;
 
-        GroundedNet = _cc.Grounded || IsStandingOnDeck;
+        bool grounded = _cc.Grounded || IsStandingOnDeck;
+        bool landed = grounded && !GroundedNet && !IsHeldNet && !IsStamping && !IsStampRecovering;
+        GroundedNet = grounded;
+        if (landed)
+            RPC_PlayActionSound(SfxCue.Landing, transform.position);
     }
 
     /// <summary>Host가 판 기준 로컬 좌표를 복제 (Client LateUpdate 시각 보정).</summary>
@@ -401,6 +405,7 @@ public class Player : NetworkBehaviour, IHoldable, ILaunchable
     /// <summary>Stamp 착지: 착지 자세 유지 시작.</summary>
     private void BeginStampRecover()
     {
+        RPC_PlayActionSound(SfxCue.Stamp, transform.position);
         _stampHangTimer = TickTimer.None;
         if (_stampRecoverTime <= 0f)
             return;
@@ -847,6 +852,7 @@ public class Player : NetworkBehaviour, IHoldable, ILaunchable
 
         HeldObjectId = target.Object.Id;
         target.OnPickedUp(Object);
+        RPC_PlayActionSound(SfxCue.Grab, transform.position);
     }
 
     /// <summary>Q: 정면(+위)으로 던지기.</summary>
@@ -858,6 +864,13 @@ public class Player : NetworkBehaviour, IHoldable, ILaunchable
         var velocity = transform.forward * _throwForce + Vector3.up * _throwUpForce;
         ReleaseHeld(velocity, thrown: true);
         ThrowCount++;
+        RPC_PlayActionSound(SfxCue.Throw, transform.position);
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All, Channel = RpcChannel.Unreliable)]
+    private void RPC_PlayActionSound(SfxCue cue, Vector3 position)
+    {
+        SFXManager.PlayWorld(cue, position);
     }
 
     /// <summary>들고 있던 대상에 놓기 또는 던지기 콜백을 보내고 HeldObjectId를 비운다.</summary>
