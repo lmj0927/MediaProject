@@ -115,6 +115,7 @@ public sealed class GameMenus : MonoBehaviour
     private void Begin(string panelName, Vector2 size, float y, bool yellowHeader)
     {
         EnsureCanvas();
+        SFXManager.PopupOpened();
         if (activeModal == null)
         {
             activeModal = this;
@@ -238,6 +239,7 @@ public sealed class GameMenus : MonoBehaviour
             if (key == "Master") AudioListener.volume = value;
             else SetMixer(key, value);
             if (key == "Sfx") SetMixer("Ui", value);
+            if (key == "Sfx" || key == "Music") SFXManager.RefreshVolumes();
         });
     }
 

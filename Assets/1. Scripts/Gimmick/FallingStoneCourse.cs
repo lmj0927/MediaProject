@@ -72,7 +72,11 @@ public sealed class FallingStoneCourse : NetworkBehaviour
             bool hit = HitsTransport(stone.Object.transform.position, next);
             if (hit || elapsed >= _rollSeconds)
             {
-                if (hit) _wheel.ApplyKnockback(direction * _knockbackSpeed);
+                if (hit)
+                {
+                    _wheel.ApplyKnockback(direction * _knockbackSpeed);
+                    _wheel.ReportImpactSound(next, _knockbackSpeed);
+                }
                 Runner.Despawn(stone.Object);
                 _stones.RemoveAt(i);
                 continue;

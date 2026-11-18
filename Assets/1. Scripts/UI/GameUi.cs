@@ -64,6 +64,7 @@ internal static class GameUi
         var graphic = Picture(rect, sprite, true);
         var button = rect.gameObject.AddComponent<Button>();
         StyleSelectable(button, graphic);
+        SFXManager.BindButton(button);
         return button;
     }
 

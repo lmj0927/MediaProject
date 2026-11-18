@@ -101,16 +101,12 @@ public class WheelConfig : ScriptableObject
     // 강한 충격(해머 등)
     // ─────────────────────────────────────────────
     [Header("Knockback — 강한 충격")]
-    [Tooltip("해머 등에 맞은 뒤 조작이 약해지는 시간(초).\n" +
-                "조작이 그대로면 땅을 잡는 힘 때문에 옆으로 밀린 속도가 0.5초 만에 사라져 맞아도 티가 안 남.")]
+    [Tooltip("해머 같은 강한 충격 뒤 수평 속도를 감쇠하는 시간(초). 감쇠 중 다시 맞아도 연장하지 않음.")]
     [Min(0f)] public float knockbackRecoverTime = 0.6f;
 
-    [Tooltip("조작이 약해진 동안의 토크 배율. 0이면 밀리는 동안 전혀 버티지 못함.")]
-    [Range(0f, 1f)] public float knockbackControl = 0.1f;
-
-    [Tooltip("조작이 약해진 동안 밀려나는 속도를 줄이는 정도(1/초). 0이면 줄이지 않음.\n" +
+    [Tooltip("넉백 감쇠 구간에 수평 속도를 줄이는 정도(1/초). 0이면 줄이지 않음.\n" +
                 "해머는 닿은 지점의 속도만큼 휠을 밀어 뚫고 들어가지 않게 하므로 처음 속도가 큼. 이 값으로 밀려가는 거리를 줄임.\n" +
-                "조작이 약해지는 시간 동안 속도는 e^(-값×시간)배가 됨.")]
+                "감쇠 구간 동안 속도는 e^(-값×시간)배가 됨.")]
     [Min(0f)] public float knockbackDrag = 4f;
 
     private void OnValidate()
