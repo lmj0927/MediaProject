@@ -654,6 +654,78 @@ MeshCollider:
   m_Convex: 0
   m_CookingOptions: 30
   m_Mesh: {fileID: 4300000, guid: 9934bcccd2d5aba48910aa5c5655a568, type: 2}
+--- !u!1 &845751937870369993
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1774577849324265821}
+  - component: {fileID: 3592192057048082314}
+  - component: {fileID: 6440490136700719327}
+  m_Layer: 0
+  m_Name: Deck Spawn Zone
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1774577849324265821
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 845751937870369993}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0.0016226704, z: 0, w: 0.9999987}
+  m_LocalPosition: {x: 43.404694, y: 8, z: 479.99524}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 478905380285126015}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!65 &3592192057048082314
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 845751937870369993}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 56, y: 40, z: 8}
+  m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &6440490136700719327
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 845751937870369993}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6e36020c580ef2849bb549645c02b29f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DeckSpawnZone
+  prefab: {fileID: 7704870783098559447, guid: 38b5b166fbecf114c93b620364830512, type: 3}
+  count: 1
+  interval: 0.6
+  spawnHeight: 3
+  scatter: 0.5
+  rearmSeconds: 3
 --- !u!1 &1181986079793343563
 GameObject:
   m_ObjectHideFlags: 0
@@ -2949,6 +3021,7 @@ Transform:
   - {fileID: 6054285445240136011}
   - {fileID: 7669452885763854715}
   - {fileID: 8023885590261396311}
+  - {fileID: 1774577849324265821}
   m_Father: {fileID: 7984150452908665071}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &4865465001776742602
