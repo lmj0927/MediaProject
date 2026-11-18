@@ -3,15 +3,12 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-/// <summary>코스의 현재 위치와 통과한 체크포인트를 표시한다.</summary>
+/// <summary>코스의 현재 위치와 통과한 체크포인트를 표시한다. 다음 체크포인트만 크게, 나머지는 작은 눈금으로 그리고 옆에 통과 수를 적는다.</summary>
 public class ProgressBarGraphic : MonoBehaviour
 {
     [HideInInspector] public float progress;
     [HideInInspector] public float reached;
     [HideInInspector] public float[] checkpoints = System.Array.Empty<float>();
-
-    /// <summary>체크포인트가 많을 때용 표시. 다음 체크포인트만 크게, 나머지는 작은 눈금으로 그리고 옆에 통과 수를 적음.</summary>
-    [HideInInspector] public bool compact;
 
     private const float Padding = 25f;
     private static readonly Vector2 Left = new Vector2(0f, .5f);
@@ -40,7 +37,6 @@ public class ProgressBarGraphic : MonoBehaviour
         GameUi.Picture(cursor, sprites.ProgressDot);
         countText = GameUi.Label(GameUi.Child("Count", transform, new Vector2(1f, .5f), Left, new Vector2(14, 0), new Vector2(140, 40)), "", 26, TextAlignmentOptions.Left);
         countText.color = Color.white;
-        countText.gameObject.SetActive(false);
     }
 
     public void Redraw()
@@ -73,11 +69,10 @@ public class ProgressBarGraphic : MonoBehaviour
             if (isPassed && i > 0) passed++;
             bool isNext = !isPassed && !nextFound;
             if (isNext) nextFound = true;
-            marker.rectTransform.sizeDelta = compact && !isNext ? SmallMarkerSize : MarkerSize;
+            marker.rectTransform.sizeDelta = isNext ? MarkerSize : SmallMarkerSize;
         }
 
-        countText.gameObject.SetActive(compact);
-        if (compact && (passed != shownPassed || checkpoints.Length != shownTotal))
+        if (passed != shownPassed || checkpoints.Length != shownTotal)
         {
             shownPassed = passed;
             shownTotal = checkpoints.Length;
