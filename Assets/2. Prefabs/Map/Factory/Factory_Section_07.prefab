@@ -28481,7 +28481,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 9102480328303106327, guid: a3f04dc41c5a63d408bc5b80747f08fb, type: 3}
       propertyPath: extendTime
-      value: 0.25
+      value: 0.6
       objectReference: {fileID: 0}
     - target: {fileID: 9102480328303106327, guid: a3f04dc41c5a63d408bc5b80747f08fb, type: 3}
       propertyPath: phaseOffset

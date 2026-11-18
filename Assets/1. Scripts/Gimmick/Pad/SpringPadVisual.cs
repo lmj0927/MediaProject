@@ -12,6 +12,9 @@ public class SpringPadVisual : MonoBehaviour
     [Tooltip("판이 젖혀지는 각도(도).")]
     [SerializeField] private float flipAngle = 50f;
 
+    [Tooltip("젖혀지면서 판이 위로 솟는 높이(m).")]
+    [Min(0f)][SerializeField] private float riseHeight = 1.2f;
+
     [Tooltip("판이 다 젖혀지는 데 걸리는 시간(초).")]
     [Min(0.01f)][SerializeField] private float flipTime = 0.08f;
 
@@ -73,6 +76,6 @@ public class SpringPadVisual : MonoBehaviour
         Quaternion tilt = Quaternion.AngleAxis(flipAngle * k, axis);
         Vector3 hinge = transform.position + plateRestPosition + launch * hingeOffset;
         Vector3 rest = transform.position + plateRestPosition;
-        plate.SetPositionAndRotation(hinge + tilt * (rest - hinge), tilt * plateRestRotation);
+        plate.SetPositionAndRotation(hinge + tilt * (rest - hinge) + Vector3.up * (riseHeight * k), tilt * plateRestRotation);
     }
 }

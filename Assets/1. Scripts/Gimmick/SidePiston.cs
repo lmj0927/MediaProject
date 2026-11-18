@@ -30,7 +30,7 @@ public class SidePiston : MonoBehaviour
     [Min(0f)][SerializeField] private float warnTime = 0.7f;
 
     [Tooltip("튀어나오는 데 걸리는 시간(초).")]
-    [Min(0.05f)][SerializeField] private float extendTime = 0.35f;
+    [Min(0.05f)][SerializeField] private float extendTime = 1.1f;
 
     [Tooltip("끝까지 나온 채로 머무는 시간(초).")]
     [Min(0f)][SerializeField] private float holdTime = 0.8f;
@@ -49,7 +49,7 @@ public class SidePiston : MonoBehaviour
     [Min(0.1f)][SerializeField] private float halfWidth = 6f;
 
     [Header("Push")]
-    [Tooltip("기둥이 나가는 쪽으로 휠을 날리는 속도(m/s).")]
+    [Tooltip("기둥에 걸린 휠을 날리는 최소 속도(m/s). 기둥이 나가는 속도가 더 빠르면 그 속도로 밀림.")]
     [Min(0f)][SerializeField] private float pushSpeed = 26f;
 
     [Tooltip("날릴 때 위로 띄우는 속도(m/s).")]
@@ -60,6 +60,9 @@ public class SidePiston : MonoBehaviour
     private Rigidbody wheelBody;
     private SphereCollider wheelSphere;
     private float nextWheelSearch;
+    private PlatformTilt platform;
+    private float lastExtension;
+    private bool soundPlayed;
 
     private void Awake()
     {
@@ -72,7 +75,7 @@ public class SidePiston : MonoBehaviour
         float t = Mathf.Repeat(time / period + phaseOffset, 1f) * period;
         warn = 0f;
         extending = false;
-        if (t < extendTime) { extending = true; float k = t / extendTime; return k * k; }
+        if (t < extendTime) { extending = true; return t / extendTime; }
         t -= extendTime;
         if (t < holdTime) return 1f;
         t -= holdTime;
@@ -126,7 +129,9 @@ public class SidePiston : MonoBehaviour
         if (!TryGetTime(out float time) || !networkObject.HasStateAuthority) return;
         float extension = Extension(time, out float warn, out bool extending);
         Pose(extension, warn);
-        if (!extending) return;
+        float faceSpeed = travel * Mathf.Max(0f, extension - lastExtension) / Mathf.Max(Time.fixedDeltaTime, 1e-4f);
+        lastExtension = extension;
+        if (!extending) { soundPlayed = false; return; }
 
         if (wheel == null)
         {
@@ -136,25 +141,35 @@ public class SidePiston : MonoBehaviour
             if (wheel == null) return;
             wheelBody = wheel.GetComponent<Rigidbody>();
             wheelSphere = wheel.GetComponent<SphereCollider>();
+            platform = FindFirstObjectByType<PlatformTilt>();
         }
 
+        // 기둥 끝이 판 가장자리에 닿는 것으로 봄. 휠은 기둥 끝보다 항상 앞에 있게 해서 기둥이 탈것을 뚫고 지나가지 않게 함
         float radius = wheelSphere.radius * wheel.transform.lossyScale.x;
+        float reach = platform != null ? Mathf.Max(radius, platform.PlatformRadius) : radius;
         Vector3 local = transform.InverseTransformPoint(wheelSphere.transform.TransformPoint(wheelSphere.center));
         float face = travel * extension;
-        if (Mathf.Abs(local.x) > halfWidth + radius * 0.5f || Mathf.Abs(local.y) > radius * 2f) return;
-        if (local.z < -radius || local.z - radius > face) return;
+        if (Mathf.Abs(local.x) > halfWidth + reach * 0.6f || Mathf.Abs(local.y) > radius * 2f) return;
+        if (local.z < -reach || local.z - reach > face) return;
 
         Vector3 dir = transform.forward;
         dir.y = 0f;
         dir.Normalize();
+        float overlap = face - (local.z - reach);
+        if (overlap > 0f) wheelBody.position += dir * overlap;
+
         Vector3 v = wheelBody.linearVelocity;
         Vector3 change = Vector3.zero;
+        float target = Mathf.Max(faceSpeed, pushSpeed);
         float along = Vector3.Dot(v, dir);
-        if (along < pushSpeed) change += dir * (pushSpeed - along);
+        if (along < target) change += dir * (target - along);
         if (v.y < lift) change += Vector3.up * (lift - v.y);
-        if (change.sqrMagnitude < 1e-4f) return;
-        wheel.ApplyKnockback(change, false);
-        wheel.ReportImpactSound(wheelBody.position - dir * radius, pushSpeed);
+        if (change.sqrMagnitude > 1e-4f) wheel.ApplyKnockback(change, false);
+        if (!soundPlayed)
+        {
+            soundPlayed = true;
+            wheel.ReportImpactSound(wheelBody.position - dir * radius, target);
+        }
     }
 
 #if UNITY_EDITOR

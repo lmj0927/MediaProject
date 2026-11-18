@@ -112,7 +112,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpringPadVisual
   plate: {fileID: 2792003091175682412}
-  flipAngle: 35
+  flipAngle: 18
+  riseHeight: 1.2
   flipTime: 0.08
   returnTime: 0.9
   hingeOffset: 4.4
