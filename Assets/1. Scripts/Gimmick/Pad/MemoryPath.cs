@@ -6,25 +6,34 @@ using UnityEngine;
 public sealed class MemoryPath : NetworkBehaviour
 {
     [SerializeField] private SphereDriver _transport;
+    [SerializeField] private BoxCollider previewTrigger;
     [SerializeField] private Transform departureLine;
     [SerializeField] private Transform hiddenVisuals;
     [SerializeField] private Camera playCamera;
     [SerializeField] private Transform previewView;
 
-    [Networked] public NetworkBool PathHidden { get; private set; }
+    [Networked] private NetworkBool HasDeparted { get; set; }
+    [Networked] private NetworkBool PreviewActive { get; set; }
+
+    public bool PathHidden => !PreviewActive;
 
     private Rigidbody transportBody;
     private Renderer[] pathRenderers;
     private bool renderersHidden;
 
-    public override void Spawned()
+    private void Awake()
     {
         pathRenderers = hiddenVisuals.GetComponentsInChildren<Renderer>(true);
+        ApplyVisibility(true);
+    }
+
+    public override void Spawned()
+    {
         if (HasStateAuthority)
         {
             transportBody = _transport.GetComponent<Rigidbody>();
-            _transport.Respawned += RevealPath;
-            PathHidden = false;
+            _transport.Respawned += ResetAttempt;
+            ResetAttempt();
         }
 
         ApplyVisibility(PathHidden);
@@ -33,18 +42,21 @@ public sealed class MemoryPath : NetworkBehaviour
     public override void Despawned(NetworkRunner runner, bool hasState)
     {
         if (_transport != null)
-            _transport.Respawned -= RevealPath;
+            _transport.Respawned -= ResetAttempt;
 
-        ApplyVisibility(false);
+        ApplyVisibility(true);
     }
 
     public override void FixedUpdateNetwork()
     {
-        if (HasStateAuthority && !PathHidden &&
-            Vector3.Dot(transportBody.position - departureLine.position, departureLine.forward) >= 0f)
-        {
-            PathHidden = true;
-        }
+        if (!HasStateAuthority || HasDeparted)
+            return;
+
+        Vector3 position = transportBody.position;
+        if (Vector3.Dot(position - departureLine.position, departureLine.forward) >= 0f)
+            HasDeparted = true;
+
+        PreviewActive = !HasDeparted && previewTrigger != null && previewTrigger.bounds.Contains(position);
     }
 
     public override void Render() => ApplyVisibility(PathHidden);
@@ -52,11 +64,15 @@ public sealed class MemoryPath : NetworkBehaviour
     private void LateUpdate()
     {
         // GameCamera continues updating its normal follow pose while the overview is on screen.
-        if (Object != null && Object.IsValid && !PathHidden)
+        if (Object != null && Object.IsValid && PreviewActive)
             playCamera.transform.SetPositionAndRotation(previewView.position, previewView.rotation);
     }
 
-    private void RevealPath() => PathHidden = false;
+    private void ResetAttempt()
+    {
+        HasDeparted = false;
+        PreviewActive = false;
+    }
 
     private void ApplyVisibility(bool hidden)
     {
