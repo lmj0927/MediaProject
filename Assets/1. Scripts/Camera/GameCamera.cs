@@ -105,7 +105,6 @@ public class GameCamera : MonoBehaviour
     private float nextSearch;
 
     private Vector3 focus;
-    private float focusHeight;
     private bool hasFocus;
     private Vector3 focusVelocity;
 
@@ -138,6 +137,9 @@ public class GameCamera : MonoBehaviour
 
     // 속도 FOV를 거리 자동 맞춤이 상쇄하지 않게 평상시 시야각으로 배치함.
     private float FramingFieldOfView => cam.fieldOfView - (speedFeel != null ? speedFeel.FieldOfViewOffset : 0f);
+
+    // 렌더와 물리 틱의 높이 차나 판의 기울기가 프레이밍 거리를 흔들지 않도록 한다.
+    private float WheelFocusHeight => deckHeight > 0f ? deckHeight : platform.HeightOffset + 1f;
 
     private void OnEnable() => MMCameraShakeEvent.Register(OnShake);
 
@@ -219,9 +221,7 @@ public class GameCamera : MonoBehaviour
     private Vector3 TargetPoint()
     {
         if (followPlayer && localPlayer != null) return localPlayer.position + Vector3.up * 1f;
-        float height = deckHeight > 0f ? deckHeight : platform.transform.position.y - platform.Sphere.position.y + 1f;
-        focusHeight = height;
-        return wheelVisual.position + Vector3.up * height;
+        return wheelVisual.position + Vector3.up * WheelFocusHeight;
     }
 
     /// <summary>
@@ -268,7 +268,7 @@ public class GameCamera : MonoBehaviour
         {
             // 휠 아래쪽 반구에서 화면 아래로 가장 튀어나오는 점들
             float r = platform.SphereRadius;
-            Vector3 wheel = center - Vector3.up * focusHeight;
+            Vector3 wheel = center - Vector3.up * WheelFocusHeight;
             Vector3 back = Quaternion.Euler(0f, yaw, 0f) * Vector3.back;
             for (int i = 0; i <= 4; i++)
             {
