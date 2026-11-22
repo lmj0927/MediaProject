@@ -51,6 +51,11 @@ public class GameCamera : MonoBehaviour
     [Tooltip("거리 범위(m). 판 전체가 들어오는 거리를 이 안에서 고름.")]
     [SerializeField] private Vector2 distanceRange = new Vector2(10f, 60f);
 
+    [Header("Local Uphill Framing")]
+    [Tooltip("이 구간 안에서만 조금 위를 봄. 위치/회전/스케일로 범위를 정하며 콜라이더는 필요 없음.")]
+    [SerializeField] private Transform lookUpRegion;
+    [Range(0f, 12f)][SerializeField] private float lookUpDegrees = 6f;
+
     [Header("Smoothing")]
     [Tooltip("수평으로 따라가는 부드러움(초). 0이면 즉시.")]
     [Min(0f)][SerializeField] private float horizontalSmoothTime = 0.05f;
@@ -114,6 +119,7 @@ public class GameCamera : MonoBehaviour
     private bool fastFraming;
     private float framingBlend;
     private float framingBlendVelocity;
+    private float localLookUp;
 
     private struct Shake
     {
@@ -193,6 +199,7 @@ public class GameCamera : MonoBehaviour
 
         float dt = Time.deltaTime;
         UpdateSpeedFraming(dt);
+        localLookUp = LocalLookUp();
 
         Vector3 target = TargetPoint();
         if (!hasFocus) { focus = target; hasFocus = true; }
@@ -231,8 +238,16 @@ public class GameCamera : MonoBehaviour
     {
         float tanHalf = Mathf.Tan(FramingFieldOfView * 0.5f * Mathf.Deg2Rad);
         float raise = Mathf.Atan((0.5f - screenY) * 2f * tanHalf) * Mathf.Rad2Deg;
-        position = center + Quaternion.Euler(pitch, yaw, 0f) * (Vector3.back * distance);
-        rotation = Quaternion.Euler(pitch - raise, yaw, 0f);
+        position = center + Quaternion.Euler(pitch - localLookUp * (2f / 3f), yaw, 0f) * (Vector3.back * distance);
+        rotation = Quaternion.Euler(pitch - raise - localLookUp, yaw, 0f);
+    }
+
+    private float LocalLookUp()
+    {
+        if (lookUpRegion == null || wheelVisual == null) return 0f;
+        Vector3 point = lookUpRegion.InverseTransformPoint(wheelVisual.position);
+        float edge = 0.5f - Mathf.Max(Mathf.Abs(point.x), Mathf.Abs(point.y), Mathf.Abs(point.z));
+        return lookUpDegrees * Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(edge / 0.12f));
     }
 
     /// <summary>판 둘레(반지름 radius)가 화면 여백 안에 모두 들어오는 가장 가까운 거리.</summary>
