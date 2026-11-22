@@ -658,6 +658,58 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CoursePoint
   checkpoint: 0
   sharpCorner: 0
+--- !u!1 &98169530
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 98169532}
+  - component: {fileID: 98169531}
+  m_Layer: 0
+  m_Name: Scene Outline
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &98169531
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 98169530}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f84f8f7b6f73296499e0f72d9708b236, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SceneOutline
+  shader: {fileID: 4800000, guid: 06c0b1671520e164798a5a7deb2bc96d, type: 3}
+  strength: 0.8
+  thickness: 2
+  depthThreshold: 0.06
+  normalThreshold: 0.35
+  lineDarkness: 0.35
+  fadeStart: 150
+  fadeEnd: 600
+--- !u!4 &98169532
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 98169530}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &116945334
 GameObject:
   m_ObjectHideFlags: 0
@@ -11902,3 +11954,4 @@ SceneRoots:
   - {fileID: 2115794069}
   - {fileID: 959623627}
   - {fileID: 1653586483}
+  - {fileID: 98169532}

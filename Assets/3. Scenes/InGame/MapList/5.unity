@@ -1366,7 +1366,8 @@ Transform:
   m_LocalPosition: {x: -18.850912, y: 107.225655, z: 1073.4401}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 1965245472}
   m_Father: {fileID: 430783381}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &339122867
@@ -2241,6 +2242,14 @@ PrefabInstance:
       propertyPath: platform
       value: 
       objectReference: {fileID: 210504144}
+    - target: {fileID: 659993944782438451, guid: fa853a8b3f3455d40bc0a126a098defd, type: 3}
+      propertyPath: lookUpRegion
+      value: 
+      objectReference: {fileID: 1965245472}
+    - target: {fileID: 659993944782438451, guid: fa853a8b3f3455d40bc0a126a098defd, type: 3}
+      propertyPath: lookUpDegrees
+      value: 8
+      objectReference: {fileID: 0}
     - target: {fileID: 1078066173573789893, guid: fa853a8b3f3455d40bc0a126a098defd, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -8902,6 +8911,37 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 7825231475936244373, guid: 3d3731e49d426f5469f66c714e790bd0, type: 3}
   m_PrefabInstance: {fileID: 1927405463}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1965245471
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1965245472}
+  m_Layer: 0
+  m_Name: Camera framing | Rockfall uphill only
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1965245472
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1965245471}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0.00000001545431, y: -0.7071068, z: 0.00000001545431, w: 0.7071068}
+  m_LocalPosition: {x: 63.44007, y: -37.225655, z: 18.850922}
+  m_LocalScale: {x: 115, y: 180, z: 184}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 339122866}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1983944177
 PrefabInstance:
   m_ObjectHideFlags: 0
